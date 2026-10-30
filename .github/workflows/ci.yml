@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (${{ matrix.shell }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [ pwsh, powershell ]
+
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Pester & PSScriptAnalyzer
+        run: |
+          Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+          if (-not (Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 })) {
+            Install-Module -Name Pester -MinimumVersion 5.3.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module -Name PSScriptAnalyzer -Force -SkipPublisherCheck -Scope CurrentUser
+          }
+
+      - name: Run PSScriptAnalyzer Linting
+        run: |
+          $issues = @()
+          $targets = @("Public", "Private")
+          foreach ($t in $targets) {
+            $issues += Invoke-ScriptAnalyzer -Path $t -Recurse -Severity Error,Warning
+          }
+          if ($issues.Count -gt 0) {
+            $issues | Format-Table -AutoSize
+            throw "PSScriptAnalyzer found $($issues.Count) issues."
+          }
+          Write-Host "PSScriptAnalyzer passed with 0 issues." -ForegroundColor Green
+
+      - name: Run Pester 5.x Unit Test Suite
+        run: |
+          Import-Module Pester -MinimumVersion 5.3.0 -Force
+          $config = [PesterConfiguration]::Default
+          $config.Run.Path = "Tests"
+          $config.Output.Verbosity = 'Detailed'
+          $config.Run.Exit = $true
+          Invoke-Pester -Configuration $config
