@@ -21,4 +21,27 @@ Describe "Lab Configuration and Multi-Volume Support" {
         $prereqs.PSObject.Properties.Name | Should -Contain "TargetStoragePath"
         $prereqs.DiscoveredVolumes.Count | Should -BeGreaterThan 0
     }
+
+    Context "Storage Scream Test" {
+        It "Passes when free space is sufficient" {
+            InModuleScope 'HyperV-LinuxLab' {
+                $passed = Assert-LabDiskSpace -Path "C:\HyperV-LinuxLab" -RequiredGB 1.0
+                $passed | Should -BeTrue
+            }
+        }
+
+        It "Triggers scream test and throws when free space is insufficient" {
+            InModuleScope 'HyperV-LinuxLab' {
+                { Assert-LabDiskSpace -Path "C:\HyperV-LinuxLab" -RequiredGB 999999.0 } |
+                    Should -Throw "*storage scream test*"
+            }
+        }
+
+        It "Does not throw when -Force is passed even if deficit exists" {
+            InModuleScope 'HyperV-LinuxLab' {
+                $result = Assert-LabDiskSpace -Path "C:\HyperV-LinuxLab" -RequiredGB 999999.0 -Force
+                $result | Should -BeFalse
+            }
+        }
+    }
 }

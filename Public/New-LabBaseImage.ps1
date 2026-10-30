@@ -34,6 +34,9 @@ function New-LabBaseImage {
         $DestinationPath = Join-Path $root "BaseImages"
     }
 
+    # Pre-flight Scream Test on destination disk capacity
+    Assert-LabDiskSpace -Path $DestinationPath -RequiredGB 5.0 -Context "Base Image Download" -Force:$Force
+
     $imageCatalog = @{
         "Ubuntu2404" = @{
             Url      = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.vhdx"

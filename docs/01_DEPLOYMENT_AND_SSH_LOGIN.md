@@ -37,14 +37,46 @@ HyperVModule           : True
 VirtualSwitch          : True
 LogicalCPUCores        : 8
 TotalMemoryGB          : 32
-StorageDrive           : C:
-FreeStorageGB          : 120.4
+TargetStoragePath      : C:\
+TargetFreeStorageGB    : 242.4
+DiscoveredVolumes      : {C: - 242.4 GB free, D: (BigO) - 942.8 GB free, E: (SSD03) - 194 GB free}
+RecommendedDrive       : D:
 CloudImageAccess       : True
 Recommendation         : Host is fully primed for Hyper-V Linux lab deployment.
 ```
 
 > [!TIP]
-> If any item fails, a clear warning box will guide you on the exact fix before continuing.
+> **Have multiple disks?** Notice `Test-LabPrerequisites` discovers all local drives (`C:`, `D:`, `E:`). If you want to deploy all virtual disks to a secondary drive with more capacity, run:
+> ```powershell
+> Set-LabConfiguration -StoragePath "D:\HyperV-LinuxLab"
+> ```
+> This saves your preference persistently. All future base images and VMs will deploy there automatically.
+
+---
+
+## Step 1.5: Built-in Storage "Scream Test" UI
+
+To protect your Windows host from disk exhaustion, `HyperV-LinuxLab` runs an automated pre-flight **Scream Test** before downloading images or allocating disks.
+
+If a target volume has insufficient space (< 10 GB), execution halts immediately and renders an unmissable alert banner:
+
+```text
+================================================================================
+ [SCREAM ALERT] INSUFFICIENT DISK CAPACITY FOR VM Differencing Provisioning
+--------------------------------------------------------------------------------
+ Target Drive   : C: (C:\HyperV-LinuxLab\LabVMs)
+ Available Space: 4.2 GB
+ Required Space : 10 GB
+ Deficit        : -5.8 GB (TOO LOW FOR SAFE DEPLOYMENT)
+--------------------------------------------------------------------------------
+ ALTERNATIVE HIGH-CAPACITY VOLUMES DETECTED ON THIS HOST:
+   * D: (BigO) -> 942.8 GB free
+   * E: (SSD03) -> 194 GB free
+ SWITCH STORAGE ROOT INSTANTLY BY RUNNING:
+   Set-LabConfiguration -StoragePath 'D:\HyperV-LinuxLab'
+ (Pass -Force to override this safety check at your own risk)
+================================================================================
+```
 
 ---
 

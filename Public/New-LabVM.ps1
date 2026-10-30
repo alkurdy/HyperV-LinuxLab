@@ -61,7 +61,9 @@ function New-LabVM {
         [Alias('StoragePath')]
         [string]$LabStoragePath,
 
-        [switch]$Start
+        [switch]$Start,
+
+        [switch]$Force
     )
 
     Assert-Administrator
@@ -70,6 +72,9 @@ function New-LabVM {
         $root = Get-LabStoragePath
         $LabStoragePath = Join-Path $root "LabVMs"
     }
+
+    # Pre-flight Scream Test on storage capacity
+    Assert-LabDiskSpace -Path $LabStoragePath -RequiredGB 10.0 -Context "VM Differencing Provisioning" -Force:$Force
 
     # Check if VM already exists
     $existing = Hyper-V\Get-VM -Name $Name -ErrorAction SilentlyContinue
