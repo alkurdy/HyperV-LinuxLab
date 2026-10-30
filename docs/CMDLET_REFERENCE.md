@@ -110,7 +110,7 @@ New-LabCloudInitISO
 ```powershell
 New-LabCloudInitISO -Name "k8s-node01" `
     -SSHAuthorizedKey (Get-Content ~/.ssh/id_ed25519.pub) `
-    -Username "alkurdy" `
+    -Username "labadmin" `
     -Packages @("containerd", "jq", "curl") `
     -RunCommands @("systemctl enable --now containerd")
 ```

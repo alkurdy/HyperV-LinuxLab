@@ -10,9 +10,10 @@ Hyper-V operations require elevated privileges.
 
 1. Press `Win + X`.
 2. Click **Terminal (Admin)** or **PowerShell (Administrator)**.
-3. Switch into the module repository directory:
+3. Navigate to the module directory:
    ```powershell
-   Set-Location "C:\Users\alkur\OneDrive\Documents\HyperV-LinuxLab"
+   git clone https://github.com/alkurdy/HyperV-LinuxLab.git
+   Set-Location .\HyperV-LinuxLab
    ```
 
 ---

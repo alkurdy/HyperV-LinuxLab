@@ -22,7 +22,8 @@ Hyper-V virtual machine and switch operations require local administrator privil
 2. Select **Terminal (Admin)** or **PowerShell (Administrator)**.
 3. Navigate to the module directory:
    ```powershell
-   Set-Location "C:\Users\alkur\OneDrive\Documents\HyperV-LinuxLab"
+   git clone https://github.com/alkurdy/HyperV-LinuxLab.git
+   Set-Location .\HyperV-LinuxLab
    ```
 
 ---
