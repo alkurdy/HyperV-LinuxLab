@@ -273,17 +273,35 @@ Diagnostic verification command checking host requirements prior to deploying la
 #### Syntax
 ```powershell
 Test-LabPrerequisites
+    [-StoragePath <String>]
+    [-MinimumFreeStorageGB <Int32>]
+    [-MinimumMemoryGB <Int32>]
     [-Detailed]
+    [-TestHost <String>]
     [<CommonParameters>]
 ```
 
+#### Parameters
+
+- **`-StoragePath`** `<String>` *(Optional, default: `'C:\'`)*
+  Volume path evaluated for virtual disk and image storage space.
+- **`-MinimumFreeStorageGB`** `<Int32>` *(Optional, default: `20`)*
+  Minimum free storage required in gigabytes.
+- **`-MinimumMemoryGB`** `<Int32>` *(Optional, default: `8`)*
+  Minimum host physical RAM required in gigabytes.
+- **`-Detailed`** `<SwitchParameter>` *(Optional)*
+  Returns full diagnostic object with properties for every subsystem.
+- **`-TestHost`** `<String>` *(Optional, default: `'cloud-images.ubuntu.com'`)*
+  Target host for outbound repository connectivity check.
+
 #### Checks Performed
-1. **Administrative Rights**: Validates whether the PowerShell session is elevated.
-2. **Hyper-V Feature**: Checks whether the Hyper-V hypervisor role is active.
-3. **Hyper-V PowerShell Module**: Ensures `Hyper-V\New-VM` is callable.
-4. **Virtual Switch Presence**: Verifies `Default Switch` or custom internal NAT switch exists.
-5. **Disk Free Space**: Ensures at least 10GB free space is available on target storage volume.
-6. **Internet Connectivity**: Tests reachability of `cloud-images.ubuntu.com`.
+1. **Administrative Elevation**: Validates whether the PowerShell session is elevated.
+2. **Windows Edition Compatibility**: Ensures host runs Windows Pro, Enterprise, Education, or Server (Windows Home edition does not support Hyper-V natively).
+3. **Hyper-V Module & Role**: Ensures `Hyper-V\New-VM` is registered and functional.
+4. **Virtual Switch Presence**: Verifies `Default Switch` or internal NAT switch exists.
+5. **Host RAM Capacity**: Confirms host has sufficient physical memory (>= 8GB) for virtualization workloads.
+6. **Disk Free Space**: Validates sufficient free space (>= 20GB) for base VHDX downloads, Cloud-Init ISOs, and differencing virtual disks.
+7. **Internet Connectivity**: Tests reachability of `cloud-images.ubuntu.com`.
 
 #### Outputs
 - `[PSCustomObject]` with pass/fail status for each subsystem and actionable remedy messages.

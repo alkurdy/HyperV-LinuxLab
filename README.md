@@ -42,10 +42,13 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ## 📋 Requirements
 
-- **Windows 10 / 11 Pro, Enterprise, or Education** (or Windows Server 2022/2025)
-- **Hyper-V Feature Enabled** (`Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All`)
-- **Administrator Privileges** (required for Hyper-V management)
-- **PowerShell 5.1 or PowerShell Core 7.x+**
+- **Operating System**: Windows 10/11 Pro, Enterprise, Education, or Windows Server 2022/2025 *(Windows Home does not support Hyper-V natively)*
+- **Hyper-V Feature Enabled**: `Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All`
+- **CPU Virtualization**: Intel VT-x or AMD-V enabled in UEFI/BIOS
+- **Memory**: Minimum 8 GB RAM (16 GB+ recommended for Kubernetes multi-node topologies)
+- **Disk Space**: Minimum 20 GB free space on target drive for base VHDX caching and differencing disks
+- **Administrator Privileges**: Required for Hyper-V management
+- **PowerShell**: Windows PowerShell 5.1 or PowerShell Core 7.x+
 
 ---
 

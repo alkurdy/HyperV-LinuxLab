@@ -142,3 +142,21 @@ HyperV-LinuxLab/
 ├── CONTRIBUTING.md                    # Contributor standards & PR workflow
 └── LICENSE                            # BSD-2-Clause license
 ```
+
+
+---
+
+## 5. System & Hardware Requirements
+
+Before running `HyperV-LinuxLab`, the host environment must satisfy the following minimum specifications:
+
+| Requirement | Minimum Specification | Recommended | Validation Mechanism |
+| :--- | :--- | :--- | :--- |
+| **Operating System** | Windows 10/11 Pro, Enterprise, Education, or Windows Server 2022/2025 *(Windows Home is **not** supported)* | Windows 11 Pro 64-bit (Build 22621+) | `Test-LabPrerequisites` inspects `Win32_OperatingSystem` & registry `EditionID` |
+| **Privileges** | Elevated Local Administrator | Local Administrator | `Assert-Administrator` / WindowsPrincipal check |
+| **CPU Architecture** | 64-bit x86_64 processor with hardware virtualization (Intel VT-x / AMD-V) & SLAT enabled in BIOS/UEFI | 4+ physical cores (8+ vCPUs) | `Win32_Processor` |
+| **System RAM** | 8 GB Physical Memory | 16 GB - 32 GB Physical Memory | `Test-LabPrerequisites` evaluates `Win32_ComputerSystem.TotalPhysicalMemory` |
+| **Free Storage Space** | 20 GB free on target volume (`C:\` by default) | 50 GB+ NVMe SSD storage | `Get-PSDrive` free space evaluation |
+| **Hyper-V Feature** | `Microsoft-Hyper-V-All` enabled | `Microsoft-Hyper-V-All` enabled | `Get-Command 'Hyper-V\New-VM'` |
+| **Virtual Switch** | `Default Switch` (internal NAT) or custom internal switch | `Default Switch` | `Hyper-V\Get-VMSwitch` |
+| **Network Access** | Outbound HTTPS/ICMP access to `cloud-images.ubuntu.com` | Direct broadband connection | `Test-Connection -ComputerName cloud-images.ubuntu.com` |
