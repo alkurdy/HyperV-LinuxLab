@@ -10,16 +10,20 @@ Describe "Module Manifest and Health" {
         $manifest.Name | Should -Be "HyperV-LinuxLab"
     }
 
-    It "Exports all 10 expected public cmdlets" {
+    It "Exports all 14 expected public cmdlets" {
         $manifest = Import-PowerShellDataFile -Path $script:manifestPath
         $expectedCmdlets = @(
-            'New-LabBaseImage',
+            'Checkpoint-LabVM',
             'Get-LabBaseImage',
+            'Get-LabCheckpoint',
+            'Get-LabVM',
+            'New-LabBaseImage',
             'New-LabCloudInitISO',
             'New-LabVM',
-            'Get-LabVM',
-            'Reset-LabVM',
+            'Remove-LabCheckpoint',
             'Remove-LabVM',
+            'Reset-LabVM',
+            'Restore-LabVM',
             'Start-LabVM',
             'Stop-LabVM',
             'Test-LabPrerequisites'

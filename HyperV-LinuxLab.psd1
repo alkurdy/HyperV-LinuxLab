@@ -31,13 +31,17 @@
 
     # Functions to export from this module, for best performance, do not use wildcards
     FunctionsToExport = @(
+        'Checkpoint-LabVM',
         'Get-LabBaseImage',
+        'Get-LabCheckpoint',
         'Get-LabVM',
         'New-LabBaseImage',
         'New-LabCloudInitISO',
         'New-LabVM',
+        'Remove-LabCheckpoint',
         'Remove-LabVM',
         'Reset-LabVM',
+        'Restore-LabVM',
         'Start-LabVM',
         'Stop-LabVM',
         'Test-LabPrerequisites'

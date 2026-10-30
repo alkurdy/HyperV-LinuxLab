@@ -208,6 +208,94 @@ Get-LabVM -Name "worker*" | Reset-LabVM -Force
 
 ---
 
+### `Checkpoint-LabVM`
+
+Takes an instantaneous snapshot of a lab VM's running differencing state.
+
+#### Syntax
+```powershell
+Checkpoint-LabVM
+    [-Name] <String[]>
+    [[-SnapshotName] <String>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+- **`-Name`** `<String[]>` *(Mandatory, ValueFromPipeline)*: Names of one or more VMs.
+- **`-SnapshotName`** `<String>` *(Optional)*: Descriptive label. Defaults to `checkpoint-yyyyMMdd-HHmmss`.
+
+#### Example
+```powershell
+Checkpoint-LabVM -Name "node-01" -SnapshotName "pre-docker-install"
+```
+
+---
+
+### `Restore-LabVM`
+
+Reverts one or more lab VMs to their most recent checkpoint (or a specified checkpoint) in seconds.
+
+#### Syntax
+```powershell
+Restore-LabVM
+    [-Name] <String[]>
+    [[-SnapshotName] <String>]
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+- **`-Name`** `<String[]>` *(Mandatory, ValueFromPipeline)*: Names of one or more VMs.
+- **`-SnapshotName`** `<String>` *(Optional)*: Specific checkpoint name. If omitted, automatically restores the **most recent** checkpoint.
+- **`-Force`** `<SwitchParameter>`: Suppresses confirmation prompt.
+
+#### Example
+```powershell
+# Revert to last checkpoint instantly
+Restore-LabVM -Name "node-01" -Force
+
+# Revert to named checkpoint
+Restore-LabVM -Name "node-01" -SnapshotName "pre-docker-install" -Force
+```
+
+---
+
+### `Get-LabCheckpoint`
+
+Lists checkpoints associated with one or more lab VMs.
+
+#### Syntax
+```powershell
+Get-LabCheckpoint
+    [-Name] <String[]>
+    [[-SnapshotName] <String>]
+    [<CommonParameters>]
+```
+
+---
+
+### `Remove-LabCheckpoint`
+
+Deletes one or all checkpoints from a lab VM.
+
+#### Syntax
+```powershell
+Remove-LabCheckpoint
+    [-Name] <String[]>
+    [[-SnapshotName] <String>]
+    [-All]
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+---
+
 ### `Get-LabVM`
 
 Retrieves status, hardware configuration, assigned IPv4 address, and storage footprint for active lab VMs.
