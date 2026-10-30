@@ -105,12 +105,16 @@ local-hostname: $Name
     $null = $sb.AppendLine("    groups: [sudo, docker]")
     $null = $sb.AppendLine("    shell: /bin/bash")
 
-    if ($null -ne $Password) {
-        $plainPass = [System.Net.NetworkCredential]::new('', $Password).Password
-        $null = $sb.AppendLine("    plain_text_passwd: '$plainPass'")
-        $null = $sb.AppendLine("    lock_passwd: false")
-        $null = $sb.AppendLine("ssh_pwauth: true")
+    # Set default lab password if omitted
+    $plainPass = if ($null -ne $Password) {
+        [System.Net.NetworkCredential]::new('', $Password).Password
+    } else {
+        "LinuxLab123!"
     }
+
+    $null = $sb.AppendLine("    plain_text_passwd: '$plainPass'")
+    $null = $sb.AppendLine("    lock_passwd: false")
+    $null = $sb.AppendLine("ssh_pwauth: true")
 
     if ($SSHAuthorizedKey) {
         $null = $sb.AppendLine("    ssh_authorized_keys:")

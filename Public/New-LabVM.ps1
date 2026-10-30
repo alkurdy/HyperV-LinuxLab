@@ -173,16 +173,19 @@ function New-LabVM {
                     Start-Sleep -Milliseconds 1500
                 }
 
+                $displayPassword = if ($null -ne $Password) { "[Custom]" } else { "LinuxLab123!" }
+
                 Write-Information @"
 
 ============================================================
  [OK] Linux Lab VM Ready!
 ------------------------------------------------------------
- Name    : $Name
- Status  : Running
- IPv4    : $ipAddress
- User    : $Username
- Connect : ssh $Username@$ipAddress
+ Name     : $Name
+ Status   : Running
+ IPv4     : $ipAddress
+ User     : $Username
+ Password : $displayPassword
+ Connect  : ssh $Username@$ipAddress
 ============================================================
 "@ -InformationAction Continue
             } else {
