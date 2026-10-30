@@ -104,8 +104,12 @@ function New-LabBaseImage {
                 }
             }
 
+            # Clear sparse attribute (Hyper-V Convert-VHD rejects sparse files with 0xC03A001A)
+            Write-Information "Normalizing disk attributes (removing sparse flag)..." -InformationAction Continue
+            & fsutil sparse setflag "$extractedVhd" 0 | Out-Null
+
             Write-Information "Converting VHD to optimized dynamic VHDX ($($entry.TargetFileName))..." -InformationAction Continue
-            Hyper-V\Convert-VHD -Path $extractedVhd -DestinationPath $targetFile -VHDType Dynamic -DeleteSource
+            Hyper-V\Convert-VHD -Path $extractedVhd -DestinationPath $targetFile -VHDType Dynamic -DeleteSource -ErrorAction Stop
 
             # Lock file as Read-Only to guarantee parent differencing integrity
             Set-ItemProperty -Path $targetFile -Name IsReadOnly -Value $true

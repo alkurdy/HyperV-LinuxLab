@@ -66,6 +66,10 @@ Describe "New-LabBaseImage" {
             return ""
         }
 
+        Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'fsutil' -MockWith {
+            return ""
+        }
+
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Convert-VHD' -MockWith {
             param($Path, $DestinationPath, $VHDType, [switch]$DeleteSource)
             New-Item -ItemType File -Path $DestinationPath -Force | Out-Null
