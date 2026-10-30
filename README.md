@@ -121,6 +121,7 @@ Total host disk space used for all 3 VMs combined: **under 500 MB**!
 | :--- | :--- |
 | **`New-LabBaseImage`** | Downloads official cloud VHDX image, verifies SHA256 checksum, sets read-only. |
 | **`Get-LabBaseImage`** | Lists cached base golden images and verification state. |
+| **`New-LabPassphrase`**| Generates memorable, human-friendly Diceware passphrases (e.g. `Swift-Falcon-42`). |
 | **`New-LabCloudInitISO`**| Generates virtual `cidata.iso` embedding SSH keys, user, and packages. |
 | **`New-LabVM`** | Creates Gen2 Hyper-V VM with differencing disk and cloud-init config. |
 | **`Get-LabVM`** | Queries IP address (via KVP/ARP), uptime, memory, and differencing disk size. |
@@ -128,7 +129,9 @@ Total host disk space used for all 3 VMs combined: **under 500 MB**!
 | **`Remove-LabVM`** | Deletes VM, differencing disk, and temporary cloud-init ISO files. |
 | **`Start-LabVM`** | Boots VM and waits for network IP acquisition. |
 | **`Stop-LabVM`** | Gracefully shuts down or forces immediate power-off. |
-| **`Test-LabPrerequisites`**| Validates Hyper-V hypervisor role, elevation, and virtual switches. |
+| **`Test-LabPrerequisites`**| Validates Hyper-V hypervisor role, elevation, multi-volume disks, and virtual switches. |
+| **`Set-LabConfiguration`**| Configures persistent storage path (e.g., secondary drive `D:\`) and default switch. |
+| **`Get-LabConfiguration`**| Displays current active lab storage root and preferred virtual switch. |
 
 For complete parameter sets, pipeline options, and detailed examples, see **[docs/CMDLET_REFERENCE.md](docs/CMDLET_REFERENCE.md)**.
 

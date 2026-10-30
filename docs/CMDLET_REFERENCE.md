@@ -10,6 +10,7 @@ Complete reference guide detailing all exported cmdlets, parameter sets, pipelin
 | :--- | :--- | :--- | :--- |
 | **[`New-LabBaseImage`](#new-labbaseimage)** | `New` | `LabBaseImage` | Downloads and verifies upstream Ubuntu/Debian Cloud VHDX images. |
 | **[`Get-LabBaseImage`](#get-labbaseimage)** | `Get` | `LabBaseImage` | Lists cached base golden images and their verification states. |
+| **[`New-LabPassphrase`](#new-labpassphrase)** | `New` | `LabPassphrase` | Generates memorable, human-friendly Diceware passphrases. |
 | **[`New-LabCloudInitISO`](#new-labcloudinitiso)** | `New` | `LabCloudInitISO` | Generates NoCloud ISO (`cidata.iso`) with user-data and meta-data. |
 | **[`New-LabVM`](#new-labvm)** | `New` | `LabVM` | Provisions a Gen2 VM with a differencing VHDX and cloud-init. |
 | **[`Get-LabVM`](#get-labvm)** | `Get` | `LabVM` | Queries runtime telemetry, assigned IP address, and disk usage. |
@@ -61,6 +62,45 @@ New-LabBaseImage
 #### Example
 ```powershell
 New-LabBaseImage -Distro Ubuntu2404 -DestinationPath "D:\LabStorage\BaseImages"
+```
+
+---
+
+### `New-LabPassphrase`
+
+Generates a memorable, human-friendly Diceware-style passphrase combining adjectives, nouns, and numbers (e.g., `Swift-Falcon-42`). Each spin-up creates a distinct passphrase satisfying Linux complexity requirements without annoying character ambiguities.
+
+#### Syntax
+```powershell
+New-LabPassphrase
+    [[-WordCount] <Int32>]
+    [[-Separator] <String>]
+    [[-IncludeNumber] <Boolean>]
+    [-AsSecureString]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-WordCount`** `<Int32>` *(Optional)*
+  Number of words in the passphrase. Valid range: 1 to 6. Default: `2`.
+- **`-Separator`** `<String>` *(Optional)*
+  Delimiter placed between words. Default: `'-'`.
+- **`-IncludeNumber`** `<Boolean>` *(Optional)*
+  Appends a random 2-digit number (10-99). Default: `$true`.
+- **`-AsSecureString`** `<SwitchParameter>` *(Optional)*
+  Outputs the result as a `System.Security.SecureString` object.
+
+#### Outputs
+- `[String]` or `[System.Security.SecureString]`.
+
+#### Example
+```powershell
+New-LabPassphrase
+# Returns: Swift-Falcon-42
+
+New-LabPassphrase -WordCount 3 -Separator "_"
+# Returns: Cosmic_Amber_Otter_73
 ```
 
 ---
