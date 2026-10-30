@@ -13,8 +13,13 @@ function Get-LabBaseImage {
     [OutputType([PSCustomObject[]])]
     param(
         [Parameter(Position = 0)]
-        [string]$Path = "C:\HyperV-LinuxLab\BaseImages"
+        [string]$Path
     )
+
+    if (-not $Path) {
+        $root = Get-LabStoragePath
+        $Path = Join-Path $root "BaseImages"
+    }
 
     if (-not (Test-Path $Path)) {
         return @()

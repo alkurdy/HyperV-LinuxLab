@@ -58,12 +58,18 @@ function New-LabVM {
 
         [string[]]$RunCommands = @(),
 
-        [string]$LabStoragePath = "C:\HyperV-LinuxLab\LabVMs",
+        [Alias('StoragePath')]
+        [string]$LabStoragePath,
 
         [switch]$Start
     )
 
     Assert-Administrator
+
+    if (-not $LabStoragePath) {
+        $root = Get-LabStoragePath
+        $LabStoragePath = Join-Path $root "LabVMs"
+    }
 
     # Check if VM already exists
     $existing = Hyper-V\Get-VM -Name $Name -ErrorAction SilentlyContinue

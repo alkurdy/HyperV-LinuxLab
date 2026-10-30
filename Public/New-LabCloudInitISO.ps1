@@ -44,8 +44,14 @@ function New-LabCloudInitISO {
 
         [string[]]$RunCommands = @(),
 
-        [string]$DestinationPath = "C:\HyperV-LinuxLab\CloudInit"
+        [Alias('StoragePath')]
+        [string]$DestinationPath
     )
+
+    if (-not $DestinationPath) {
+        $root = Get-LabStoragePath
+        $DestinationPath = Join-Path $root "CloudInit"
+    }
 
     # Resolve Profile if specified
     if ($Profile) {

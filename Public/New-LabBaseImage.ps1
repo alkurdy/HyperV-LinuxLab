@@ -22,12 +22,17 @@ function New-LabBaseImage {
         [string]$Distro = "Ubuntu2404",
 
         [Parameter(Position = 1)]
-        [string]$DestinationPath = "C:\HyperV-LinuxLab\BaseImages",
+        [string]$DestinationPath,
 
         [switch]$Force
     )
 
     Assert-Administrator
+
+    if (-not $DestinationPath) {
+        $root = Get-LabStoragePath
+        $DestinationPath = Join-Path $root "BaseImages"
+    }
 
     $imageCatalog = @{
         "Ubuntu2404" = @{

@@ -83,14 +83,34 @@ function Test-LabPrerequisites {
     $ramSufficient = ($totalRamGB -ge $MinimumMemoryGB)
     $checks["MemoryCapacitySufficient"] = $ramSufficient
 
-    # 7. Storage free space on target volume (for base VHDX downloads, ISOs, and differencing disks)
-    $driveLetter = "C"
-    if ($StoragePath -and $StoragePath.Length -ge 1) {
-        $driveLetter = $StoragePath.Substring(0, 1)
+    # 7. Storage volume discovery across all fixed local drives
+    $disks = Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 3 }
+    $discoveredVolumes = @()
+    $recommendedDrive = "C:"
+    $maxFreeBytes = 0
+
+    foreach ($d in $disks) {
+        $freeGB = [math]::Round($d.FreeSpace / 1GB, 1)
+        $totalGB = [math]::Round($d.Size / 1GB, 1)
+        $label = if ($d.VolumeName) { " ($($d.VolumeName))" } else { "" }
+        $discoveredVolumes += "$($d.DeviceID)$label - ${freeGB} GB free of ${totalGB} GB"
+        if ($d.FreeSpace -gt $maxFreeBytes) {
+            $maxFreeBytes = $d.FreeSpace
+            $recommendedDrive = $d.DeviceID
+        }
     }
-    $drive = Get-PSDrive -Name $driveLetter -ErrorAction SilentlyContinue
-    $freeGB = if ($drive) { [math]::Round($drive.Free / 1GB, 2) } else { 0.0 }
-    $storageSufficient = ($freeGB -ge $MinimumFreeStorageGB)
+
+    # Evaluate target volume (explicit parameter, persistent config, or fallback)
+    $targetPath = if ($StoragePath -and $StoragePath -ne "C:\") {
+        $StoragePath
+    } else {
+        Get-LabStoragePath -ExplicitPath $StoragePath
+    }
+
+    $targetLetter = $targetPath.Substring(0, 1)
+    $targetDisk = $disks | Where-Object { $_.DeviceID -eq "$targetLetter`:" } | Select-Object -First 1
+    $targetFreeGB = if ($targetDisk) { [math]::Round($targetDisk.FreeSpace / 1GB, 1) } else { 0.0 }
+    $storageSufficient = ($targetFreeGB -ge $MinimumFreeStorageGB)
     $checks["StorageCapacitySufficient"] = $storageSufficient
 
     # 8. Outbound network connectivity for cloud base images
@@ -112,7 +132,7 @@ function Test-LabPrerequisites {
     } elseif (-not $ramSufficient) {
         "Host physical RAM (${totalRamGB} GB) is below minimum recommended threshold (${MinimumMemoryGB} GB)."
     } elseif (-not $storageSufficient) {
-        "Volume ${driveLetter}: has ${freeGB} GB free, which is below the required ${MinimumFreeStorageGB} GB for base images and virtual disks."
+        "Target path '$targetPath' has ${targetFreeGB} GB free, which is below the required ${MinimumFreeStorageGB} GB. Available drives: $($discoveredVolumes -join '; ')"
     } elseif (-not $canConnect) {
         "Cannot reach $TestHost. Verify internet connectivity or proxy configuration to download cloud images."
     } else {
@@ -128,8 +148,10 @@ function Test-LabPrerequisites {
         VirtualSwitch          = $checks["VirtualSwitchAvailable"]
         LogicalCPUCores        = $totalCores
         TotalMemoryGB          = $totalRamGB
-        StorageDrive           = "$driveLetter`:"
-        FreeStorageGB          = $freeGB
+        TargetStoragePath      = $targetPath
+        TargetFreeStorageGB    = $targetFreeGB
+        DiscoveredVolumes      = $discoveredVolumes
+        RecommendedDrive       = $recommendedDrive
         CloudImageAccess       = $canConnect
         Recommendation         = $recommendation
     }
@@ -140,6 +162,10 @@ function Test-LabPrerequisites {
 
     if ($allPassed) {
         Write-Information "[OK] All prerequisites satisfied. Host is ready to deploy Hyper-V Linux labs." -InformationAction Continue
+        if ($recommendedDrive -ne "$targetLetter`:" -and $targetFreeGB -lt 100) {
+            Write-Information "     Tip: Drive $recommendedDrive has more free capacity. To deploy there by default, run:" -InformationAction Continue
+            Write-Information "          Set-LabConfiguration -StoragePath '$recommendedDrive\HyperV-LinuxLab'" -InformationAction Continue
+        }
     } else {
         $failedLines = @()
         if (-not $isAdmin) { $failedLines += "   Admin Rights : Not elevated -> Re-launch PowerShell as Administrator" }
@@ -148,7 +174,10 @@ function Test-LabPrerequisites {
         if (-not $checks["VirtualSwitchAvailable"]) { $failedLines += "   V-Switch     : Missing -> Create 'Default Switch' or Internal Switch in Hyper-V" }
         if (-not $cpuSufficient) { $failedLines += "   CPU Cores    : $totalCores logical cores (Minimum recommended: $MinimumCPUCount cores)" }
         if (-not $ramSufficient) { $failedLines += "   Host RAM     : ${totalRamGB} GB (Minimum recommended: ${MinimumMemoryGB} GB)" }
-        if (-not $storageSufficient) { $failedLines += "   Disk Storage : ${freeGB} GB free on ${driveLetter}: (Minimum required: ${MinimumFreeStorageGB} GB)" }
+        if (-not $storageSufficient) {
+            $failedLines += "   Disk Storage : ${targetFreeGB} GB free on $($targetLetter): (Minimum required: ${MinimumFreeStorageGB} GB)"
+            $failedLines += "                  Available volumes: $($discoveredVolumes -join ', ')"
+        }
         if (-not $canConnect) { $failedLines += "   Network      : Cannot connect to $TestHost -> Verify internet connection" }
 
         Write-Warning @"

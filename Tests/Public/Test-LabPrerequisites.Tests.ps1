@@ -8,7 +8,7 @@ Describe "Test-LabPrerequisites" {
         $result = Test-LabPrerequisites
         $result | Should -Not -BeNullOrEmpty
         $result.Status | Should -BeIn @("Ready", "Failed")
-        $result.FreeStorageGB | Should -BeGreaterThan 0
+        $result.TargetFreeStorageGB | Should -BeGreaterThan 0
     }
 
     It "Returns detailed diagnostics when -Detailed is specified" {
@@ -20,8 +20,10 @@ Describe "Test-LabPrerequisites" {
         $result.PSObject.Properties.Name | Should -Contain "VirtualSwitch"
         $result.PSObject.Properties.Name | Should -Contain "LogicalCPUCores"
         $result.PSObject.Properties.Name | Should -Contain "TotalMemoryGB"
-        $result.PSObject.Properties.Name | Should -Contain "StorageDrive"
-        $result.PSObject.Properties.Name | Should -Contain "FreeStorageGB"
+        $result.PSObject.Properties.Name | Should -Contain "TargetStoragePath"
+        $result.PSObject.Properties.Name | Should -Contain "TargetFreeStorageGB"
+        $result.PSObject.Properties.Name | Should -Contain "DiscoveredVolumes"
+        $result.PSObject.Properties.Name | Should -Contain "RecommendedDrive"
         $result.PSObject.Properties.Name | Should -Contain "CloudImageAccess"
         $result.PSObject.Properties.Name | Should -Contain "Recommendation"
     }

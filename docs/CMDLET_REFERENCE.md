@@ -354,6 +354,45 @@ Remove-LabVM -Name "linux-sandbox" -Force
 
 ---
 
+### `Get-LabConfiguration`
+
+Retrieves active persistent configuration settings (default storage volume, virtual switch, and directory tree).
+
+#### Syntax
+```powershell
+Get-LabConfiguration
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+Get-LabConfiguration
+```
+
+---
+
+### `Set-LabConfiguration`
+
+Configures persistent defaults for Hyper-V Linux lab automation, allowing users to choose secondary high-capacity drives (e.g. `D:\` or `E:\`) for all virtual disks, base images, and ISOs.
+
+#### Syntax
+```powershell
+Set-LabConfiguration
+    [[-StoragePath] <String>]
+    [[-PreferredSwitch] <String>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+# Deploy all virtual disks and base images to D: drive automatically
+Set-LabConfiguration -StoragePath "D:\HyperV-LinuxLab"
+```
+
+---
+
 ### `Get-LabProfile`
 
 Discovers and lists available declarative toolchain profiles (`Minimal`, `Container`, `Kubernetes`, or custom user profiles).
