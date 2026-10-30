@@ -135,7 +135,7 @@ set default="0"
 set timeout=0
 menuentry "Ubuntu Linux Lab" {
     search.fs_uuid $rootUuid root
-    linux (`$root)/vmlinuz root=PARTUUID=894056a3-b700-490f-ba09-b15ddba61a34 ro console=tty1 ds=nocloud
+    linux (`$root)/vmlinuz root=PARTUUID=894056a3-b700-490f-ba09-b15ddba61a34 ro console=tty1 ds=nocloud systemd.mask=walinuxagent.service systemd.mask=waagent.service
     initrd (`$root)/initrd.img
 }
 "@

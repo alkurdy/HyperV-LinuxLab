@@ -124,6 +124,14 @@ local-hostname: $Name
     $null = $sb.AppendLine("package_update: true")
     $null = $sb.AppendLine("package_upgrade: false")
 
+    # Disable and mask Azure guest agent (walinuxagent) to prevent ovf-env.xml polling loop
+    $null = $sb.AppendLine("bootcmd:")
+    $null = $sb.AppendLine("  - systemctl mask --now walinuxagent.service waagent.service 2>/dev/null || true")
+    $null = $sb.AppendLine("  - systemctl stop --now walinuxagent.service waagent.service 2>/dev/null || true")
+    $null = $sb.AppendLine("  - mkdir -p /var/lib/waagent")
+    $null = $sb.AppendLine("  - touch /var/lib/waagent/ovf-env.xml")
+    $null = $sb.AppendLine("  - echo 'datasource_list: [ NoCloud, None ]' > /etc/cloud/cloud.cfg.d/99-nocloud.cfg")
+
     if ($Packages -and $Packages.Count -gt 0) {
         $null = $sb.AppendLine("packages:")
         foreach ($pkg in $Packages) {
@@ -131,11 +139,17 @@ local-hostname: $Name
         }
     }
 
+    $allRunCmds = @(
+        "systemctl mask --now walinuxagent.service waagent.service 2>/dev/null || true",
+        "systemctl stop --now walinuxagent.service waagent.service 2>/dev/null || true"
+    )
     if ($RunCommands -and $RunCommands.Count -gt 0) {
-        $null = $sb.AppendLine("runcmd:")
-        foreach ($cmd in $RunCommands) {
-            $null = $sb.AppendLine("  - $cmd")
-        }
+        $allRunCmds += $RunCommands
+    }
+
+    $null = $sb.AppendLine("runcmd:")
+    foreach ($cmd in $allRunCmds) {
+        $null = $sb.AppendLine("  - $cmd")
     }
 
     $userData = $sb.ToString()
