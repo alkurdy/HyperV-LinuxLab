@@ -48,6 +48,14 @@ function New-LabCluster {
             Write-Information "--- Ensuring Base Image '$baseDistro' is Cached ---" -InformationAction Continue
             $base = New-LabBaseImage -Distro $baseDistro
 
+            # Generate cluster-wide default passphrase
+            $clusterPassphrase = New-LabPassphrase
+            $clusterSec = [System.Security.SecureString]::new()
+            foreach ($c in $clusterPassphrase.ToCharArray()) {
+                $clusterSec.AppendChar($c)
+            }
+            $clusterSec.MakeReadOnly()
+
             Write-Information "--- Deploying Cluster '$($cluster.ClusterName)' ($($cluster.Nodes.Count) nodes) ---" -InformationAction Continue
 
             $deployed = @()
@@ -68,6 +76,7 @@ function New-LabCluster {
                     BaseImage = $base.Path
                     MemoryGB  = $ram
                     CPUCount  = $cpu
+                    Password  = $clusterSec
                     Start     = $true
                 }
                 if ($n.Profile) { $vmParams["Profile"] = $n.Profile }
@@ -81,6 +90,7 @@ function New-LabCluster {
                     State    = $vm.State
                     IPv4     = $vm.IPv4
                     SSH      = $vm.SSH
+                    Password = $clusterPassphrase
                     CPU      = $cpu
                     MemoryGB = $ram
                     Profile  = if ($n.Profile) { $n.Profile } else { "None" }
@@ -94,6 +104,8 @@ function New-LabCluster {
  [CLUSTER READY] $($cluster.ClusterName) ($($deployed.Count) Nodes)
 ------------------------------------------------------------
 $($deployed | Format-Table Name, Role, IPv4, CPU, MemoryGB, Profile | Out-String)
+ Default Password : $clusterPassphrase
+
  SSH Access:
 $(($deployed | Where-Object { $_.IPv4 } | ForEach-Object { "   $($_.Name): $($_.SSH)" }) -join "`n")
 ============================================================

@@ -94,49 +94,47 @@ New-LabBaseImage -Distro "Ubuntu2404"
 
 ---
 
-## Step 3: Choose Your Login Method & Deploy
+## Step 3: Spin Up Your Linux Lab VM
 
-You can configure your lab VM for **SSH Key authentication**, **Password authentication**, or **both**.
-
-### Option A: SSH Key Authentication (Recommended / Default)
-Cloud-Init automatically discovers your Windows SSH key (`~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`).
+Every time you spin up a lab VM, `HyperV-LinuxLab` automatically:
+1. Discovers your Windows SSH public key (`~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`) and authorizes it.
+2. Generates a fresh, memorable, human-friendly passphrase (e.g. `Swift-Falcon-42` via `New-LabPassphrase`) so you can log in with password even if your SSH key has a forgotten passphrase or is absent.
+3. Configures Gen2 UEFI firmware with `MicrosoftUEFICertificateAuthority` (Linux Secure Boot).
+4. Attaches a dynamic differencing disk (< 10 MB initial size).
 
 ```powershell
 New-LabVM -Name "linux-sandbox" -Profile "Minimal" -Start
 ```
 
----
-
-### Option B: SSH Key AND Password Authentication
-If you also want to be able to type a password to log in, provide a password using a SecureString:
-
-```powershell
-$password = ConvertTo-SecureString "LabPass123!" -AsPlainText -Force
-
-New-LabVM -Name "linux-sandbox" -Profile "Minimal" -Password $password -Start
-```
-
-### What happens behind the scenes in ~15 seconds:
-1. Creates a tiny (< 10MB) child differencing disk linked to your base image.
-2. Generates a Cloud-Init ISO (`cidata.iso`) configuring the `labadmin` user, password, and SSH keys.
-3. Sets up Gen2 UEFI firmware with `MicrosoftUEFICertificateAuthority` (Linux Secure Boot).
-4. Boots the VM and resolves its IP address via Hyper-V KVP data exchange.
+> [!TIP]
+> **Need a custom passphrase or password?**
+> You can generate a fresh passphrase at any time using:
+> ```powershell
+> New-LabPassphrase
+> # e.g. 'Cosmic-Otter-73'
+> ```
+> Or pass your own custom password to `New-LabVM`:
+> ```powershell
+> $customPass = ConvertTo-SecureString "MyCustomPass123!" -AsPlainText -Force
+> New-LabVM -Name "linux-sandbox" -Password $customPass -Start
+> ```
 
 ---
 
 ## Step 4: The On-Screen Connection Banner
 
-Once the VM finishes booting, this banner will appear directly on your screen:
+Once the VM finishes booting (~10 seconds), this connection banner displays directly on your screen:
 
 ```text
 ============================================================
  [OK] Linux Lab VM Ready!
 ------------------------------------------------------------
- Name    : linux-sandbox
- Status  : Running
- IPv4    : 172.28.140.85
- User    : labadmin
- Connect : ssh labadmin@172.28.140.85
+ Name     : linux-sandbox
+ Status   : Running
+ IPv4     : 172.23.108.101
+ User     : labadmin
+ Password : Swift-Falcon-42
+ Connect  : ssh labadmin@172.23.108.101
 ============================================================
 ```
 
@@ -154,19 +152,34 @@ ssh labadmin@<Your-VM-IP>
 ```
 
 - When prompted: `Are you sure you want to continue connecting (yes/no/[fingerprint])?`, type `yes` and hit **Enter**.
-- You will land directly into the Linux terminal without needing to type a password!
+- If your local Windows SSH key has no passphrase, you land directly in the Linux terminal without typing a password.
+- If your local Windows key asks for a passphrase you don't remember, use **Method 2** below.
 
 ---
 
-### Method 2: Log in using Password
-If you deployed using Option B and want to test logging in with your password (bypassing the SSH key):
+### Method 2: Log in using the Generated Lab Passphrase
+To bypass the local Windows SSH key prompt and log in with the lab passphrase shown in the banner:
 
 ```powershell
 ssh -o PubkeyAuthentication=no labadmin@<Your-VM-IP>
 ```
 
 - The server will prompt: `labadmin@<Your-VM-IP>'s password: `
-- Type your password (e.g. `LabPass123!`) and hit **Enter** *(note: characters will not show on screen while typing — this is normal Linux security behavior)*.
+- Type or paste the generated passphrase (e.g. `Swift-Falcon-42`) and hit **Enter** *(note: characters will not echo on screen while typing — this is standard Linux security behavior)*.
+
+---
+
+### Step 5.1: Changing Your Password Inside Linux (Optional)
+
+Once logged into your VM, you can change your password anytime using the standard Linux command:
+
+```bash
+passwd
+```
+
+1. Enter the current passphrase (e.g. `Swift-Falcon-42`).
+2. Type your new desired password twice.
+3. Done! All future logins will use your new password.
 
 ---
 

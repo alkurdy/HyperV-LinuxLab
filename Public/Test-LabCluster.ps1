@@ -85,7 +85,7 @@ function Test-LabCluster {
     # Host hardware capacity review
     $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
     $hostRamGB = if ($cs -and $cs.TotalPhysicalMemory) { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) } else { 0.0 }
-    
+
     $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
     $freeRamGB = if ($os -and $os.FreePhysicalMemory) { [math]::Round($os.FreePhysicalMemory / 1MB, 1) } else { 0.0 }
 

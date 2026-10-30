@@ -109,7 +109,7 @@ local-hostname: $Name
     $plainPass = if ($null -ne $Password) {
         [System.Net.NetworkCredential]::new('', $Password).Password
     } else {
-        "LinuxLab123!"
+        New-LabPassphrase
     }
 
     $null = $sb.AppendLine("    plain_text_passwd: '$plainPass'")
@@ -160,6 +160,7 @@ local-hostname: $Name
             ISOPath  = $info.FullName
             SizeKB   = [math]::Round($info.Length / 1KB, 2)
             Username = $Username
+            Password = $plainPass
             Profile  = if ($Profile) { $Profile } else { "None" }
             HasSSH   = [bool]$SSHAuthorizedKey
         }

@@ -40,6 +40,7 @@
         'New-LabBaseImage',
         'New-LabCloudInitISO',
         'New-LabCluster',
+        'New-LabPassphrase',
         'New-LabProfile',
         'New-LabVM',
         'Remove-LabCheckpoint',

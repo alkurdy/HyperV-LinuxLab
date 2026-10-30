@@ -110,11 +110,25 @@ function New-LabVM {
     $isoPath = Join-Path $vmDir "$Name-cidata.iso"
 
     if ($PSCmdlet.ShouldProcess($Name, "Create Gen2 Differencing VM with parent '$parentPath'")) {
-        # 1. Create Child Differencing Disk
+        # 1. Resolve Passphrase
+        $plainPassword = ""
+        if (-not $Password) {
+            $plainPassword = New-LabPassphrase
+            $sec = [System.Security.SecureString]::new()
+            foreach ($c in $plainPassword.ToCharArray()) {
+                $sec.AppendChar($c)
+            }
+            $sec.MakeReadOnly()
+            $Password = $sec
+        } else {
+            $plainPassword = [System.Net.NetworkCredential]::new('', $Password).Password
+        }
+
+        # 2. Create Child Differencing Disk
         Write-Verbose "Creating child differencing VHDX at '$diffDiskPath' pointing to '$parentPath'"
         New-VHD -ParentPath $parentPath -Path $diffDiskPath -Differencing | Out-Null
 
-        # 2. Build Cloud-Init ISO in VM directory
+        # 3. Build Cloud-Init ISO in VM directory
         Write-Verbose "Generating Cloud-Init ISO at '$isoPath'"
         $cloudInit = New-LabCloudInitISO -Name $Name `
             -SSHAuthorizedKey $SSHAuthorizedKey `
@@ -137,7 +151,7 @@ function New-LabVM {
         # 4. Tune CPU, RAM, and UEFI Firmware
         Hyper-V\Set-VMProcessor -VMName $Name -Count $CPUCount | Out-Null
         Hyper-V\Set-VMMemory -VMName $Name -DynamicMemoryEnabled $false | Out-Null
-        
+
         # Configure Linux Secure Boot (MicrosoftUEFICertificateAuthority)
         Hyper-V\Set-VMFirmware -VMName $Name `
             -EnableSecureBoot On `
@@ -173,8 +187,6 @@ function New-LabVM {
                     Start-Sleep -Milliseconds 1500
                 }
 
-                $displayPassword = if ($null -ne $Password) { "[Custom]" } else { "LinuxLab123!" }
-
                 Write-Information @"
 
 ============================================================
@@ -184,7 +196,7 @@ function New-LabVM {
  Status   : Running
  IPv4     : $ipAddress
  User     : $Username
- Password : $displayPassword
+ Password : $plainPassword
  Connect  : ssh $Username@$ipAddress
 ============================================================
 "@ -InformationAction Continue
@@ -198,6 +210,7 @@ function New-LabVM {
             State             = if ($Start) { "Running" } else { "Off" }
             IPv4              = $ipAddress
             SSH               = if ($ipAddress) { "ssh $Username@$ipAddress" } else { "" }
+            Password          = $plainPassword
             Profile           = if ($Profile) { $Profile } else { "None" }
             CPU               = $CPUCount
             MemoryGB          = $MemoryGB
