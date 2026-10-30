@@ -52,6 +52,12 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ---
 
+## 📖 Step-by-Step Hands-On Guide
+👉 **[Read the Complete Beginner-to-Intermediate Linux Learning Tutorial](docs/TUTORIAL_LEARNING_LINUX.md)**  
+Walks step-by-step through first-time provisioning, SSH login, Linux kernel & process inspection drills, 2-second snapshots, break-fix recovery, and cleanup.
+
+---
+
 ## 🛠️ Quick Start
 
 ### 1. Verify Prerequisites
