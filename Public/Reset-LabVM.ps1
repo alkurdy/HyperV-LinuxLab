@@ -57,6 +57,13 @@ function Reset-LabVM {
                 }
 
                 $diffPath = $hardDrive.Path
+                if ($diffPath -match '\.avhdx$') {
+                    Write-Verbose "Checkpoint chain detected ($diffPath). Collapsing snapshots..."
+                    Hyper-V\Get-VMSnapshot -VMName $vmName -ErrorAction SilentlyContinue | Hyper-V\Remove-VMSnapshot | Out-Null
+                    $hardDrive = Hyper-V\Get-VMHardDiskDrive -VMName $vmName | Select-Object -First 1
+                    $diffPath = $hardDrive.Path
+                }
+
                 $vhdInfo = Hyper-V\Get-VHD -Path $diffPath
                 $parentPath = $vhdInfo.ParentPath
 

@@ -58,7 +58,7 @@ function New-ISO9660Image {
 
         # System & Volume Identifiers (32 bytes padded)
         [System.Text.Encoding]::ASCII.GetBytes("HYPERV LAB".PadRight(32)).CopyTo($pvd, 8)
-        [System.Text.Encoding]::ASCII.GetBytes($VolumeId.ToUpper().PadRight(32)).CopyTo($pvd, 40)
+        [System.Text.Encoding]::ASCII.GetBytes($VolumeId.PadRight(32)).CopyTo($pvd, 40)
 
         # Volume Space Size (LSB at 80, MSB at 84)
         [BitConverter]::GetBytes([uint32]$totalSectors).CopyTo($pvd, 80)
@@ -132,7 +132,7 @@ function New-ISO9660Image {
 
         # File Directory Entries
         foreach ($k in $Files.Keys) {
-            $fNameBytes = [System.Text.Encoding]::ASCII.GetBytes($k.ToUpper())
+            $fNameBytes = [System.Text.Encoding]::ASCII.GetBytes($k)
             $recLen = 33 + $fNameBytes.Length
             if ($recLen % 2 -ne 0) { $recLen++ }
             $entry = New-Object byte[] $recLen

@@ -136,6 +136,7 @@ function New-LabVM {
 
         # 4. Tune CPU, RAM, and UEFI Firmware
         Hyper-V\Set-VMProcessor -VMName $Name -Count $CPUCount | Out-Null
+        Hyper-V\Set-VMMemory -VMName $Name -DynamicMemoryEnabled $false | Out-Null
         
         # Configure Linux Secure Boot (MicrosoftUEFICertificateAuthority)
         Hyper-V\Set-VMFirmware -VMName $Name `
@@ -151,8 +152,27 @@ function New-LabVM {
         if ($Start) {
             Write-Information "Starting VM '$Name' and waiting for network readiness..." -InformationAction Continue
             Hyper-V\Start-VM -Name $Name | Out-Null
-            $ipAddress = Get-LabVMIPAddress -VMName $Name -TimeoutSeconds 30
+            $ipAddress = Get-LabVMIPAddress -VMName $Name -TimeoutSeconds 45
             if ($ipAddress) {
+                # Wait for SSH listener on port 22
+                Write-Information "Waiting for SSH service to become ready on $ipAddress..." -InformationAction Continue
+                $sshStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+                while ($sshStopwatch.Elapsed.TotalSeconds -lt 45) {
+                    try {
+                        $tcp = [System.Net.Sockets.TcpClient]::new()
+                        $ar = $tcp.BeginConnect($ipAddress, 22, $null, $null)
+                        if ($ar.AsyncWaitHandle.WaitOne(1000, $false) -and $tcp.Connected) {
+                            $tcp.EndConnect($ar)
+                            $tcp.Close()
+                            break
+                        }
+                        $tcp.Close()
+                    } catch {
+                        Write-Verbose "Waiting for SSH on port 22: $_"
+                    }
+                    Start-Sleep -Milliseconds 1500
+                }
+
                 Write-Information @"
 
 ============================================================

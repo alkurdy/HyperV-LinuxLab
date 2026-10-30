@@ -24,6 +24,7 @@ Describe "New-LabVM" {
             }
         }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMProcessor' -MockWith { }
+        Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMMemory' -MockWith { }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMFirmware' -MockWith { }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Add-VMDvdDrive' -MockWith { }
     }

@@ -111,6 +111,47 @@ function New-LabBaseImage {
             Write-Information "Converting VHD to optimized dynamic VHDX ($($entry.TargetFileName))..." -InformationAction Continue
             Hyper-V\Convert-VHD -Path $extractedVhd -DestinationPath $targetFile -VHDType Dynamic -DeleteSource -ErrorAction Stop
 
+            # Optimize EFI GRUB configuration for NoCloud datasource and console redirection
+            Write-Information "Configuring EFI bootloader for fast NoCloud provisioning..." -InformationAction Continue
+            try {
+                $disk = Mount-VHD -Path $targetFile -Passthru -ErrorAction SilentlyContinue
+                if ($disk) {
+                    Start-Sleep -Seconds 1
+                    $part = Get-Disk -Number $disk.DiskNumber | Get-Partition | Where-Object { $_.PartitionNumber -eq 3 }
+                    if ($part) {
+                        $letters = 90..65 | ForEach-Object { [char]$_ }
+                        $used = Get-PSDrive -PSProvider FileSystem | ForEach-Object { $_.Name }
+                        $freeLetter = ($letters | Where-Object { $used -notcontains $_ } | Select-Object -First 1)
+                        $part | Set-Partition -NewDriveLetter $freeLetter -ErrorAction SilentlyContinue
+                        $grubCfg = Join-Path "$($freeLetter):" "EFI\ubuntu\grub.cfg"
+                        if (Test-Path $grubCfg) {
+                            $existingGrub = Get-Content $grubCfg -Raw
+                            $rootUuidMatch = [regex]::Match($existingGrub, 'search\.fs_uuid\s+([a-f0-9\-]+)')
+                            $rootUuid = if ($rootUuidMatch.Success) { $rootUuidMatch.Groups[1].Value } else { "" }
+                            if ($rootUuid) {
+                                $cleanGrub = @"
+search.fs_uuid $rootUuid root
+set default="0"
+set timeout=0
+menuentry "Ubuntu Linux Lab" {
+    search.fs_uuid $rootUuid root
+    linux (`$root)/vmlinuz root=PARTUUID=894056a3-b700-490f-ba09-b15ddba61a34 ro console=tty1 ds=nocloud
+    initrd (`$root)/initrd.img
+}
+"@
+                                [System.IO.File]::WriteAllText($grubCfg, $cleanGrub.Replace("`r`n", "`n"))
+                            }
+                        }
+                        Remove-PartitionAccessPath -DiskNumber $disk.DiskNumber -PartitionNumber 3 -Accesspath "$($freeLetter):\" -ErrorAction SilentlyContinue
+                    }
+                    Dismount-VHD -Path $targetFile -ErrorAction SilentlyContinue
+                }
+            }
+            catch {
+                Write-Verbose "EFI GRUB optimization skipped: $_"
+                Dismount-VHD -Path $targetFile -ErrorAction SilentlyContinue
+            }
+
             # Lock file as Read-Only to guarantee parent differencing integrity
             Set-ItemProperty -Path $targetFile -Name IsReadOnly -Value $true
             $fileInfo = Get-Item $targetFile

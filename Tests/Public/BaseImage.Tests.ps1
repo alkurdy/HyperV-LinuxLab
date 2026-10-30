@@ -55,7 +55,7 @@ Describe "New-LabBaseImage" {
 
     It "Downloads, extracts, and converts image when not cached" {
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Invoke-WebRequest' -MockWith {
-            param($Uri, $OutFile, [switch]$UseBasicParsing)
+            param($OutFile)
             New-Item -ItemType File -Path $OutFile -Force | Out-Null
         }
 
@@ -71,7 +71,7 @@ Describe "New-LabBaseImage" {
         }
 
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Convert-VHD' -MockWith {
-            param($Path, $DestinationPath, $VHDType, [switch]$DeleteSource)
+            param($Path, $DestinationPath, [switch]$DeleteSource)
             New-Item -ItemType File -Path $DestinationPath -Force | Out-Null
             if ($DeleteSource -and (Test-Path $Path)) {
                 Remove-Item $Path -Force -ErrorAction SilentlyContinue
