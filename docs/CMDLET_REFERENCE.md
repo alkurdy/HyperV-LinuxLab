@@ -402,6 +402,66 @@ New-LabProfile -Name "SecurityLab" `
 
 ---
 
+### `Test-LabCluster`
+
+Validates a declarative cluster JSON topology specification against host memory and disk limits before provisioning.
+
+#### Syntax
+```powershell
+Test-LabCluster
+    [-Path] <String>
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+Test-LabCluster -Path .\examples\k8s-3node-cluster.json
+```
+
+---
+
+### `New-LabCluster`
+
+Provisions a complete multi-node cluster topology from a declarative JSON file in parallel, configuring differencing disks, profiles, and networking.
+
+#### Syntax
+```powershell
+New-LabCluster
+    [-Path] <String>
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+New-LabCluster -Path .\examples\k8s-3node-cluster.json
+```
+
+---
+
+### `Remove-LabCluster`
+
+Tears down all virtual machines, differencing disks, and configuration ISOs declared in a cluster JSON definition.
+
+#### Syntax
+```powershell
+Remove-LabCluster
+    [-Path] <String>
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+Remove-LabCluster -Path .\examples\k8s-3node-cluster.json -Force
+```
+
+---
+
 ### `Test-LabPrerequisites`
 
 Diagnostic verification command checking host requirements prior to deploying lab infrastructure.

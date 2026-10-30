@@ -1,0 +1,27 @@
+{
+  "ClusterName": "k8s-lab",
+  "BaseImage": "Ubuntu2404",
+  "Nodes": [
+    {
+      "Name": "cp-01",
+      "Role": "ControlPlane",
+      "Profile": "Kubernetes",
+      "CPU": 2,
+      "MemoryGB": 4
+    },
+    {
+      "Name": "worker-01",
+      "Role": "Worker",
+      "Profile": "Kubernetes",
+      "CPU": 2,
+      "MemoryGB": 2
+    },
+    {
+      "Name": "worker-02",
+      "Role": "Worker",
+      "Profile": "Kubernetes",
+      "CPU": 2,
+      "MemoryGB": 2
+    }
+  ]
+}

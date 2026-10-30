@@ -38,14 +38,17 @@
         'Get-LabVM',
         'New-LabBaseImage',
         'New-LabCloudInitISO',
+        'New-LabCluster',
         'New-LabProfile',
         'New-LabVM',
         'Remove-LabCheckpoint',
+        'Remove-LabCluster',
         'Remove-LabVM',
         'Reset-LabVM',
         'Restore-LabVM',
         'Start-LabVM',
         'Stop-LabVM',
+        'Test-LabCluster',
         'Test-LabPrerequisites'
     )
 
