@@ -74,7 +74,7 @@ function New-LabVM {
     }
 
     # Pre-flight Scream Test on storage capacity
-    Assert-LabDiskSpace -Path $LabStoragePath -RequiredGB 10.0 -Context "VM Differencing Provisioning" -Force:$Force
+    Assert-LabDiskSpace -Path $LabStoragePath -RequiredGB 10.0 -Context "VM Differencing Provisioning" -Force:$Force | Out-Null
 
     # Check if VM already exists
     $existing = Hyper-V\Get-VM -Name $Name -ErrorAction SilentlyContinue
