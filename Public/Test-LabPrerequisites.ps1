@@ -35,6 +35,9 @@ function Test-LabPrerequisites {
         [int]$MinimumMemoryGB = 8,
 
         [Parameter(Mandatory = $false)]
+        [int]$MinimumCPUCount = 4,
+
+        [Parameter(Mandatory = $false)]
         [switch]$Detailed,
 
         [Parameter(Mandatory = $false)]
@@ -65,13 +68,22 @@ function Test-LabPrerequisites {
     $switches = Hyper-V\Get-VMSwitch -ErrorAction SilentlyContinue
     $checks["VirtualSwitchAvailable"] = ($null -ne $switches -and $switches.Count -gt 0)
 
-    # 5. Host RAM capacity (minimum required for lab virtualization)
+    # 5. Host CPU Core capacity
+    $processors = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue
+    $totalCores = 0
+    foreach ($p in $processors) {
+        $totalCores += $p.NumberOfLogicalProcessors
+    }
+    $cpuSufficient = ($totalCores -ge $MinimumCPUCount)
+    $checks["CPUCoresSufficient"] = $cpuSufficient
+
+    # 6. Host RAM capacity (minimum required for lab virtualization)
     $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
     $totalRamGB = if ($cs -and $cs.TotalPhysicalMemory) { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) } else { 0.0 }
     $ramSufficient = ($totalRamGB -ge $MinimumMemoryGB)
     $checks["MemoryCapacitySufficient"] = $ramSufficient
 
-    # 6. Storage free space on target volume (for base VHDX downloads, ISOs, and differencing disks)
+    # 7. Storage free space on target volume (for base VHDX downloads, ISOs, and differencing disks)
     $driveLetter = "C"
     if ($StoragePath -and $StoragePath.Length -ge 1) {
         $driveLetter = $StoragePath.Substring(0, 1)
@@ -81,7 +93,7 @@ function Test-LabPrerequisites {
     $storageSufficient = ($freeGB -ge $MinimumFreeStorageGB)
     $checks["StorageCapacitySufficient"] = $storageSufficient
 
-    # 7. Outbound network connectivity for cloud base images
+    # 8. Outbound network connectivity for cloud base images
     $canConnect = Test-Connection -ComputerName $TestHost -Count 1 -Quiet -ErrorAction SilentlyContinue
     $checks["CloudImageNetworkAccess"] = $canConnect
 
@@ -95,6 +107,8 @@ function Test-LabPrerequisites {
         "Enable Hyper-V feature via: Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All"
     } elseif (-not $checks["VirtualSwitchAvailable"]) {
         "Create a virtual switch in Hyper-V Manager or run: New-VMSwitch -Name 'LabSwitch' -SwitchType Internal"
+    } elseif (-not $cpuSufficient) {
+        "Host logical CPU cores ($totalCores) is below minimum recommended threshold ($MinimumCPUCount cores)."
     } elseif (-not $ramSufficient) {
         "Host physical RAM (${totalRamGB} GB) is below minimum recommended threshold (${MinimumMemoryGB} GB)."
     } elseif (-not $storageSufficient) {
@@ -112,6 +126,7 @@ function Test-LabPrerequisites {
         HyperVSupported        = $hyperVSupported
         HyperVModule           = $hasHyperV
         VirtualSwitch          = $checks["VirtualSwitchAvailable"]
+        LogicalCPUCores        = $totalCores
         TotalMemoryGB          = $totalRamGB
         StorageDrive           = "$driveLetter`:"
         FreeStorageGB          = $freeGB
@@ -126,7 +141,24 @@ function Test-LabPrerequisites {
     if ($allPassed) {
         Write-Information "[OK] All prerequisites satisfied. Host is ready to deploy Hyper-V Linux labs." -InformationAction Continue
     } else {
-        Write-Warning "Prerequisite checks failed: $($result.Recommendation)"
+        $failedLines = @()
+        if (-not $isAdmin) { $failedLines += "   Admin Rights : Not elevated -> Re-launch PowerShell as Administrator" }
+        if (-not $hyperVSupported) { $failedLines += "   OS Edition   : $caption -> Windows Home does not support Hyper-V (Pro/Enterprise required)" }
+        if (-not $hasHyperV) { $failedLines += "   Hyper-V Role : Not installed -> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All" }
+        if (-not $checks["VirtualSwitchAvailable"]) { $failedLines += "   V-Switch     : Missing -> Create 'Default Switch' or Internal Switch in Hyper-V" }
+        if (-not $cpuSufficient) { $failedLines += "   CPU Cores    : $totalCores logical cores (Minimum recommended: $MinimumCPUCount cores)" }
+        if (-not $ramSufficient) { $failedLines += "   Host RAM     : ${totalRamGB} GB (Minimum recommended: ${MinimumMemoryGB} GB)" }
+        if (-not $storageSufficient) { $failedLines += "   Disk Storage : ${freeGB} GB free on ${driveLetter}: (Minimum required: ${MinimumFreeStorageGB} GB)" }
+        if (-not $canConnect) { $failedLines += "   Network      : Cannot connect to $TestHost -> Verify internet connection" }
+
+        Write-Warning @"
+
+============================================================
+ [WARNING] Host Hardware / System Prerequisites Not Met
+------------------------------------------------------------
+$($failedLines -join "`n")
+============================================================
+"@
     }
 
     return $result

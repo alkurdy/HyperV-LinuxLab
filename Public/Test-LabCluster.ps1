@@ -82,21 +82,71 @@ function Test-LabCluster {
         }
     }
 
-    # Host capacity checks
+    # Host hardware capacity review
     $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
     $hostRamGB = if ($cs -and $cs.TotalPhysicalMemory) { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) } else { 0.0 }
-    if ($hostRamGB -gt 0 -and $totalRAM -gt ($hostRamGB * 0.85)) {
-        $errors += "Cluster requires ${totalRAM} GB RAM, which exceeds 85% of host physical RAM (${hostRamGB} GB)."
+    
+    $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+    $freeRamGB = if ($os -and $os.FreePhysicalMemory) { [math]::Round($os.FreePhysicalMemory / 1MB, 1) } else { 0.0 }
+
+    $processors = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue
+    $totalHostCores = 0
+    foreach ($p in $processors) {
+        $totalHostCores += $p.NumberOfLogicalProcessors
     }
 
     $drive = Get-PSDrive -Name C -ErrorAction SilentlyContinue
     $freeStorageGB = if ($drive) { [math]::Round($drive.Free / 1GB, 2) } else { 0.0 }
     $minStorageRequired = 10 + ($cluster.Nodes.Count * 2)
+
+    # Threshold reviews
+    $warnings = @()
+    if ($hostRamGB -gt 0 -and $totalRAM -gt ($hostRamGB * 0.85)) {
+        $errors += "Cluster requires ${totalRAM} GB RAM, which exceeds 85% of host physical RAM (${hostRamGB} GB)."
+        $warnings += [PSCustomObject]@{
+            Resource  = "Memory"
+            Required  = "${totalRAM} GB"
+            Available = "${hostRamGB} GB total (${freeRamGB} GB free)"
+            Status    = "DEFICIT"
+        }
+    }
+
+    if ($totalHostCores -gt 0 -and $totalCPU -gt ($totalHostCores * 2)) {
+        $errors += "Cluster requires ${totalCPU} vCPUs, which overcommits host logical cores (${totalHostCores}) beyond 2:1 ratio."
+        $warnings += [PSCustomObject]@{
+            Resource  = "vCPU"
+            Required  = "${totalCPU} vCPUs"
+            Available = "${totalHostCores} Logical Cores"
+            Status    = "OVERCOMMIT (> 2:1)"
+        }
+    }
+
     if ($freeStorageGB -lt $minStorageRequired) {
         $errors += "Cluster requires at least ${minStorageRequired} GB free disk space. Volume C: only has ${freeStorageGB} GB free."
+        $warnings += [PSCustomObject]@{
+            Resource  = "Storage"
+            Required  = "${minStorageRequired} GB"
+            Available = "${freeStorageGB} GB free"
+            Status    = "DEFICIT"
+        }
     }
 
     $isValid = ($errors.Count -eq 0)
+
+    # Display clean warning ONLY if hardware limits are exceeded
+    if (-not $isValid -and $warnings.Count -gt 0) {
+        $warningTable = $warnings | Format-Table Resource, Required, Available, Status | Out-String
+        Write-Warning @"
+
+============================================================
+ [WARNING] Insufficient Hardware Capacity for Cluster '$($cluster.ClusterName)'
+------------------------------------------------------------
+$warningTable
+ Guidance: Reduce 'MemoryGB' or 'CPU' per node in '$Path',
+           or pass -Force to proceed with overcommitted resources.
+============================================================
+"@
+    }
 
     return [PSCustomObject]@{
         Status        = if ($isValid) { "Valid" } else { "Invalid" }
@@ -104,7 +154,9 @@ function Test-LabCluster {
         NodeCount     = $cluster.Nodes.Count
         TotalMemoryGB = $totalRAM
         TotalCPU      = $totalCPU
-        HostFreeRAMGB = $hostRamGB
+        HostRAMGB     = $hostRamGB
+        HostFreeRAMGB = $freeRamGB
+        HostCores     = $totalHostCores
         HostFreeDisk  = $freeStorageGB
         Errors        = $errors
     }

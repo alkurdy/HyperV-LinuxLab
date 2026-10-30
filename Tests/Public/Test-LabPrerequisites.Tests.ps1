@@ -18,6 +18,7 @@ Describe "Test-LabPrerequisites" {
         $result.PSObject.Properties.Name | Should -Contain "HyperVSupported"
         $result.PSObject.Properties.Name | Should -Contain "HyperVModule"
         $result.PSObject.Properties.Name | Should -Contain "VirtualSwitch"
+        $result.PSObject.Properties.Name | Should -Contain "LogicalCPUCores"
         $result.PSObject.Properties.Name | Should -Contain "TotalMemoryGB"
         $result.PSObject.Properties.Name | Should -Contain "StorageDrive"
         $result.PSObject.Properties.Name | Should -Contain "FreeStorageGB"
