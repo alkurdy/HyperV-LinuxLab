@@ -25,6 +25,12 @@ Describe "New-LabPassphrase" {
         $parts.Count | Should -Be 3
     }
 
+    It "Supports single-word passphrases without appending a number" {
+        $phrase = New-LabPassphrase -WordCount 1 -IncludeNumber $false
+        $phrase | Should -Not -BeNullOrEmpty
+        $phrase.Contains('-') | Should -BeFalse
+    }
+
     It "Returns System.Security.SecureString when -AsSecureString is passed" {
         $sec = New-LabPassphrase -AsSecureString
         $sec | Should -BeOfType [System.Security.SecureString]

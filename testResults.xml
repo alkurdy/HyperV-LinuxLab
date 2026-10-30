@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="5" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2026-10-30" time="23:44:00">
+  <environment os-version="6.17.0-1022-azure" machine-name="runnervmtai0g" nunit-version="2.5.8.0" user="runner" cwd="/home/runner/work/HyperV-LinuxLab/HyperV-LinuxLab" user-domain="" platform="Linux" clr-version="10.0.12" />
+  <culture-info current-culture="" current-uiculture="" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="0.5164" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="/home/runner/work/HyperV-LinuxLab/HyperV-LinuxLab/Tests/Public/New-LabPassphrase.Tests.ps1" executed="True" result="Success" success="True" time="0.5164" asserts="0" description="/home/runner/work/HyperV-LinuxLab/HyperV-LinuxLab/Tests/Public/New-LabPassphrase.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="New-LabPassphrase" executed="True" result="Success" success="True" time="0.23" asserts="0" description="New-LabPassphrase">
+            <results>
+              <test-case description="Generates default passphrase with 2 words, hyphen separator, and number" name="New-LabPassphrase.Generates default passphrase with 2 words, hyphen separator, and number" time="0.1467" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="Generates unique passphrases on consecutive calls" name="New-LabPassphrase.Generates unique passphrases on consecutive calls" time="0.0088" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="Respects custom WordCount, Separator, and IncludeNumber" name="New-LabPassphrase.Respects custom WordCount, Separator, and IncludeNumber" time="0.0064" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="Supports single-word passphrases without appending a number" name="New-LabPassphrase.Supports single-word passphrases without appending a number" time="0.0089" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="Returns System.Security.SecureString when -AsSecureString is passed" name="New-LabPassphrase.Returns System.Security.SecureString when -AsSecureString is passed" time="0.0339" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>
