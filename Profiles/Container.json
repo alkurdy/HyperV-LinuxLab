@@ -1,0 +1,25 @@
+{
+  "Name": "Container",
+  "Description": "Docker Engine, containerd runtime, and container debugging tools.",
+  "Packages": [
+    "curl",
+    "git",
+    "jq",
+    "tar",
+    "tmux",
+    "htop",
+    "tree",
+    "lsof",
+    "strace",
+    "dnsutils",
+    "tcpdump",
+    "iptables",
+    "ca-certificates"
+  ],
+  "RunCommands": [
+    "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh",
+    "sh /tmp/get-docker.sh",
+    "systemctl enable --now docker",
+    "usermod -aG docker labadmin"
+  ]
+}

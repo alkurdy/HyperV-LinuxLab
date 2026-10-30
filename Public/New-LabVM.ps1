@@ -48,6 +48,9 @@ function New-LabVM {
 
         [string]$Username = "labadmin",
 
+        [Parameter(Mandatory = $false)]
+        [string]$Profile,
+
         [string[]]$Packages = @("curl", "git", "jq"),
 
         [string[]]$RunCommands = @(),
@@ -102,6 +105,7 @@ function New-LabVM {
         $cloudInit = New-LabCloudInitISO -Name $Name `
             -SSHAuthorizedKey $SSHAuthorizedKey `
             -Username $Username `
+            -Profile $Profile `
             -Packages $Packages `
             -RunCommands $RunCommands `
             -DestinationPath $vmDir
@@ -156,6 +160,7 @@ function New-LabVM {
             State             = if ($Start) { "Running" } else { "Off" }
             IPv4              = $ipAddress
             SSH               = if ($ipAddress) { "ssh $Username@$ipAddress" } else { "" }
+            Profile           = if ($Profile) { $Profile } else { "None" }
             CPU               = $CPUCount
             MemoryGB          = $MemoryGB
             BaseImage         = (Split-Path $parentPath -Leaf)

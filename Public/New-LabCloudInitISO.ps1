@@ -37,12 +37,31 @@ function New-LabCloudInitISO {
         [Parameter(Mandatory = $false)]
         [System.Security.SecureString]$Password,
 
+        [Parameter(Mandatory = $false)]
+        [string]$Profile,
+
         [string[]]$Packages = @("curl", "git", "jq", "tar"),
 
         [string[]]$RunCommands = @(),
 
         [string]$DestinationPath = "C:\HyperV-LinuxLab\CloudInit"
     )
+
+    # Resolve Profile if specified
+    if ($Profile) {
+        $resolvedProfile = Resolve-LabProfile -Profile $Profile
+        $combinedPackages = @($resolvedProfile.Packages)
+        if ($PSBoundParameters.ContainsKey('Packages')) {
+            $combinedPackages += $Packages
+        }
+        $Packages = $combinedPackages | Select-Object -Unique
+
+        $combinedCmds = @($resolvedProfile.RunCommands)
+        if ($PSBoundParameters.ContainsKey('RunCommands')) {
+            $combinedCmds += $RunCommands
+        }
+        $RunCommands = $combinedCmds
+    }
 
     # Auto-discover SSH key if not provided
     if (-not $SSHAuthorizedKey) {
@@ -130,6 +149,7 @@ local-hostname: $Name
             ISOPath  = $info.FullName
             SizeKB   = [math]::Round($info.Length / 1KB, 2)
             Username = $Username
+            Profile  = if ($Profile) { $Profile } else { "None" }
             HasSSH   = [bool]$SSHAuthorizedKey
         }
     }

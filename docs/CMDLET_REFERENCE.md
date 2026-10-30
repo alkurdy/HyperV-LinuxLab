@@ -354,6 +354,54 @@ Remove-LabVM -Name "linux-sandbox" -Force
 
 ---
 
+### `Get-LabProfile`
+
+Discovers and lists available declarative toolchain profiles (`Minimal`, `Container`, `Kubernetes`, or custom user profiles).
+
+#### Syntax
+```powershell
+Get-LabProfile
+    [[-Name] <String>]
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+Get-LabProfile
+Get-LabProfile -Name "Container"
+```
+
+---
+
+### `New-LabProfile`
+
+Scaffolds a new declarative JSON profile template that can be passed directly to `New-LabVM -Profile <Name>`.
+
+#### Syntax
+```powershell
+New-LabProfile
+    [-Name] <String>
+    [[-Description] <String>]
+    [[-Packages] <String[]>]
+    [[-RunCommands] <String[]>]
+    [[-DestinationPath] <String>]
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Example
+```powershell
+# Create custom security lab profile in ~/.hyperv-linuxlab/profiles/
+New-LabProfile -Name "SecurityLab" `
+    -Description "Penetration testing and packet analysis" `
+    -Packages @("nmap", "wireshark", "tcpdump") `
+    -RunCommands @("echo 'export LAB=sec' >> /etc/profile")
+```
+
+---
+
 ### `Test-LabPrerequisites`
 
 Diagnostic verification command checking host requirements prior to deploying lab infrastructure.

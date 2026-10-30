@@ -1,0 +1,19 @@
+{
+  "Name": "Minimal",
+  "Description": "Essential Linux system diagnostics, process tracing, and networking utilities.",
+  "Packages": [
+    "curl",
+    "git",
+    "jq",
+    "tar",
+    "tmux",
+    "htop",
+    "tree",
+    "lsof",
+    "strace",
+    "dnsutils",
+    "tcpdump",
+    "net-tools"
+  ],
+  "RunCommands": []
+}
