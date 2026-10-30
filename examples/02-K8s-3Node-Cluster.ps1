@@ -50,6 +50,15 @@ foreach ($n in $nodes) {
 Write-Information "--- Cluster Nodes Provisioned ---" -InformationAction Continue
 Get-LabVM -Name "$ClusterPrefix-*" | Format-Table Name, State, IPv4, CPU, MemoryMB, DifferencingDiskMB
 
+# SSH Connection Instructions
+Write-Information @"
+
+============================================================
+ [READY] Connect to Cluster Nodes:
+$(($deployed | Where-Object { $_.IPv4 } | ForEach-Object { "   $($_.Name): $($_.SSH)" }) -join "`n")
+============================================================
+"@ -InformationAction Continue
+
 # Demonstration commands:
 # Batch Reset all 3 nodes simultaneously:
 # Get-LabVM -Name "$ClusterPrefix-*" | Reset-LabVM -Force

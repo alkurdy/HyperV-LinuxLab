@@ -47,7 +47,19 @@ Write-Information "Node online at IP: $($vm.IPv4)" -InformationAction Continue
 # 4. View VM Status & Differencing Disk Size (< 10MB)
 Get-LabVM -Name $NodeName | Format-Table Name, State, IPv4, DifferencingDiskMB, ParentBase
 
-# 5. Example: Instant Reset to Clean State
+# 5. Connect Instructions
+if ($vm.IPv4) {
+    Write-Information @"
+
+============================================================
+ [READY] Connect to your Linux Lab VM:
+ 
+   $($vm.SSH)
+============================================================
+"@ -InformationAction Continue
+}
+
+# 6. Example: Instant Reset to Clean State
 # Uncomment below to trigger sub-5-second reset:
 # Write-Information "--- Testing Instant 3-Second Reset ---" -InformationAction Continue
 # Reset-LabVM -Name $NodeName -Force

@@ -134,7 +134,18 @@ function New-LabVM {
             Hyper-V\Start-VM -Name $Name | Out-Null
             $ipAddress = Get-LabVMIPAddress -VMName $Name -TimeoutSeconds 30
             if ($ipAddress) {
-                Write-Information "[OK] VM '$Name' online at IP: $ipAddress" -InformationAction Continue
+                Write-Information @"
+
+============================================================
+ [OK] Linux Lab VM Ready!
+------------------------------------------------------------
+ Name    : $Name
+ Status  : Running
+ IPv4    : $ipAddress
+ User    : $Username
+ Connect : ssh $Username@$ipAddress
+============================================================
+"@ -InformationAction Continue
             } else {
                 Write-Information "[OK] VM '$Name' started. IP will populate once cloud-init completes." -InformationAction Continue
             }
@@ -144,6 +155,7 @@ function New-LabVM {
             Name              = $Name
             State             = if ($Start) { "Running" } else { "Off" }
             IPv4              = $ipAddress
+            SSH               = if ($ipAddress) { "ssh $Username@$ipAddress" } else { "" }
             CPU               = $CPUCount
             MemoryGB          = $MemoryGB
             BaseImage         = (Split-Path $parentPath -Leaf)

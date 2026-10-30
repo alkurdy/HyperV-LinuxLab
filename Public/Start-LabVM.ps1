@@ -47,7 +47,17 @@ function Start-LabVM {
                     Write-Information "Waiting for VM '$vmName' to acquire an IP address..." -InformationAction Continue
                     $ip = Get-LabVMIPAddress -VMName $vmName -TimeoutSeconds $TimeoutSeconds
                     if ($ip) {
-                        Write-Information "[OK] VM '$vmName' online: $ip" -InformationAction Continue
+                        Write-Information @"
+
+============================================================
+ [OK] Linux Lab VM Ready!
+------------------------------------------------------------
+ Name    : $vmName
+ Status  : Running
+ IPv4    : $ip
+ Connect : ssh labadmin@$ip
+============================================================
+"@ -InformationAction Continue
                     } else {
                         Write-Warning "VM '$vmName' started but did not report an IP within ${TimeoutSeconds}s."
                     }
@@ -57,6 +67,7 @@ function Start-LabVM {
                     Name  = $vmName
                     State = "Running"
                     IPv4  = $ip
+                    SSH   = if ($ip) { "ssh labadmin@$ip" } else { "" }
                 }
             }
         }
