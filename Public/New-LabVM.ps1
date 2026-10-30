@@ -49,6 +49,9 @@ function New-LabVM {
         [string]$Username = "labadmin",
 
         [Parameter(Mandatory = $false)]
+        [System.Security.SecureString]$Password,
+
+        [Parameter(Mandatory = $false)]
         [string]$Profile,
 
         [string[]]$Packages = @("curl", "git", "jq"),
@@ -105,6 +108,7 @@ function New-LabVM {
         $cloudInit = New-LabCloudInitISO -Name $Name `
             -SSHAuthorizedKey $SSHAuthorizedKey `
             -Username $Username `
+            -Password $Password `
             -Profile $Profile `
             -Packages $Packages `
             -RunCommands $RunCommands `

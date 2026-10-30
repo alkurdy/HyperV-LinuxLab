@@ -103,6 +103,7 @@ local-hostname: $Name
         $plainPass = [System.Net.NetworkCredential]::new('', $Password).Password
         $null = $sb.AppendLine("    plain_text_passwd: '$plainPass'")
         $null = $sb.AppendLine("    lock_passwd: false")
+        $null = $sb.AppendLine("ssh_pwauth: true")
     }
 
     if ($SSHAuthorizedKey) {

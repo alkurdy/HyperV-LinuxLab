@@ -52,9 +52,13 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ---
 
-## 📖 Step-by-Step Hands-On Guide
-👉 **[Read the Complete Beginner-to-Intermediate Linux Learning Tutorial](docs/TUTORIAL_LEARNING_LINUX.md)**  
-Walks step-by-step through first-time provisioning, SSH login, Linux kernel & process inspection drills, 2-second snapshots, break-fix recovery, and cleanup.
+## 📖 Step-by-Step Learning Guides
+- 🚀 **[Tutorial 1: Deploying Your Linux Lab & SSH Login (Key & Password)](docs/01_DEPLOYMENT_AND_SSH_LOGIN.md)**  
+  Walks step-by-step from zero to a running VM, testing both SSH key and password authentication.
+- 🐧 **[Tutorial 2: Linux Operating System Essentials & Mental Model](docs/02_LINUX_ESSENTIALS_OVERVIEW.md)**  
+  High-yield architectural overview of the Linux kernel, filesystem hierarchy, permissions, systemd, pipes, and networking.
+- 🛠️ **[Advanced Lab Drills: Snapshots & Instant Reset](docs/TUTORIAL_LEARNING_LINUX.md)**  
+  Break-fix scenarios, 2-second snapshots, and 3-second factory resets.
 
 ---
 
