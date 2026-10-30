@@ -67,22 +67,60 @@ function New-LabPassphrase {
 
     $selectedWords = [System.Collections.Generic.List[string]]::new()
 
+    $rngType = [System.Security.Cryptography.RandomNumberGenerator]
+    $getInt32Method = $rngType.GetMethods([System.Reflection.BindingFlags]'Public,Static') |
+        Where-Object { $_.Name -eq 'GetInt32' -and $_.GetParameters().Count -eq 2 } |
+        Select-Object -First 1
+
+    $getSecureRandomInt = {
+        param(
+            [Parameter(Mandatory = $true)]
+            [int]$MinInclusive,
+            [Parameter(Mandatory = $true)]
+            [int]$MaxExclusive
+        )
+
+        if ($MaxExclusive -le $MinInclusive) {
+            throw "MaxExclusive must be greater than MinInclusive."
+        }
+
+        if ($null -ne $getInt32Method) {
+            return [System.Security.Cryptography.RandomNumberGenerator]::GetInt32($MinInclusive, $MaxExclusive)
+        }
+
+        $range = [uint32]($MaxExclusive - $MinInclusive)
+        $limit = [uint32]::MaxValue - ([uint32]::MaxValue % $range)
+        $bytes = [byte[]]::new(4)
+        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+
+        try {
+            do {
+                $rng.GetBytes($bytes)
+                $value = [BitConverter]::ToUInt32($bytes, 0)
+            } while ($value -ge $limit)
+        } finally {
+            $rng.Dispose()
+        }
+
+        return $MinInclusive + [int]($value % $range)
+    }
+
     if ($WordCount -eq 1) {
-        $idx = [System.Security.Cryptography.RandomNumberGenerator]::GetInt32(0, $nouns.Count)
+        $idx = & $getSecureRandomInt 0 $nouns.Count
         $selectedWords.Add($nouns[$idx])
     } else {
         for ($i = 0; $i -lt ($WordCount - 1); $i++) {
-            $idx = [System.Security.Cryptography.RandomNumberGenerator]::GetInt32(0, $adjectives.Count)
+            $idx = & $getSecureRandomInt 0 $adjectives.Count
             $selectedWords.Add($adjectives[$idx])
         }
-        $nounIdx = [System.Security.Cryptography.RandomNumberGenerator]::GetInt32(0, $nouns.Count)
+        $nounIdx = & $getSecureRandomInt 0 $nouns.Count
         $selectedWords.Add($nouns[$nounIdx])
     }
 
     $passphrase = $selectedWords -join $Separator
 
     if ($IncludeNumber) {
-        $num = [System.Security.Cryptography.RandomNumberGenerator]::GetInt32(10, 100)
+        $num = & $getSecureRandomInt 10 100
         $passphrase = "${passphrase}${Separator}${num}"
     }
 
