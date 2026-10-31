@@ -85,7 +85,11 @@ function New-LabPassphrase {
         }
 
         if ($null -ne $getInt32Method) {
-            return [System.Security.Cryptography.RandomNumberGenerator]::GetInt32($MinInclusive, $MaxExclusive)
+            try {
+                return [System.Security.Cryptography.RandomNumberGenerator]::GetInt32($MinInclusive, $MaxExclusive)
+            } catch [System.Management.Automation.RuntimeException] {
+                $getInt32Method = $null
+            }
         }
 
         $range = [uint32]($MaxExclusive - $MinInclusive)
