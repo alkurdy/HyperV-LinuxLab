@@ -25,7 +25,7 @@ function Get-LabAutoStart {
     )
 
     process {
-        $targetVMs = Get-LabTargetVM -Name $Name -Path $Path
+        $targetVMs = @(Get-LabTargetVM -Name $Name -Path $Path)
         $results = @()
 
         foreach ($vm in $targetVMs) {

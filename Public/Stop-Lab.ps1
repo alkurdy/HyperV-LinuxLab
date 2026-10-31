@@ -43,8 +43,8 @@ function Stop-Lab {
     }
 
     process {
-        $targetVMs = Get-LabTargetVM -Name $Name -Path $Path
-        if (-not $targetVMs -or $targetVMs.Count -eq 0) {
+        $targetVMs = @(Get-LabTargetVM -Name $Name -Path $Path)
+        if ($targetVMs.Count -eq 0) {
             Write-Warning "No Hyper-V Linux lab virtual machines were found."
             return @()
         }

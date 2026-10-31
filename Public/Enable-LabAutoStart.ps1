@@ -49,8 +49,8 @@ function Enable-LabAutoStart {
     }
 
     process {
-        $targetVMs = Get-LabTargetVM -Name $Name -Path $Path
-        if ((-not $targetVMs -or $targetVMs.Count -eq 0) -and $Mode -ne 'ScheduledTask') {
+        $targetVMs = @(Get-LabTargetVM -Name $Name -Path $Path)
+        if ($targetVMs.Count -eq 0 -and $Mode -ne 'ScheduledTask') {
             Write-Warning "No Hyper-V Linux lab virtual machines were found."
             return @()
         }

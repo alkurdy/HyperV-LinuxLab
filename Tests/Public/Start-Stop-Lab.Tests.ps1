@@ -54,9 +54,10 @@ Describe "Start-Lab and Stop-Lab" {
         It "Starts targeted VMs and outputs standardized telemetry" {
             $results = Start-Lab -Name "k8s-test-cp-01"
             $results | Should -Not -BeNullOrEmpty
-            $results.Count | Should -Be 1
-            $results[0].Name | Should -Be "k8s-test-cp-01"
-            $results[0].State | Should -Be "Running"
+            @($results).Count | Should -Be 1
+            $first = @($results)[0]
+            $first.Name | Should -Be "k8s-test-cp-01"
+            $first.State | Should -Be "Running"
 
             Assert-MockCalled -ModuleName 'HyperV-LinuxLab' 'Hyper-V\Start-VM' -Times 1 -ParameterFilter {
                 $Name -eq "k8s-test-cp-01"
@@ -107,9 +108,10 @@ Describe "Start-Lab and Stop-Lab" {
         It "Gracefully stops all targeted running lab VMs" {
             $results = Stop-Lab -Name "k8s-test-cp-01"
             $results | Should -Not -BeNullOrEmpty
-            $results.Count | Should -Be 1
-            $results[0].Name | Should -Be "k8s-test-cp-01"
-            $results[0].State | Should -Be "Off"
+            @($results).Count | Should -Be 1
+            $first = @($results)[0]
+            $first.Name | Should -Be "k8s-test-cp-01"
+            $first.State | Should -Be "Off"
 
             Assert-MockCalled -ModuleName 'HyperV-LinuxLab' 'Hyper-V\Stop-VM' -Times 1 -ParameterFilter {
                 $Name -eq "k8s-test-cp-01"
