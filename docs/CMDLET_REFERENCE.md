@@ -18,6 +18,11 @@ Complete reference guide detailing all exported cmdlets, parameter sets, pipelin
 | **[`Remove-LabVM`](#remove-labvm)** | `Remove` | `LabVM` | Completely deletes VM, differencing disk, and attached ISO. |
 | **[`Start-LabVM`](#start-labvm)** | `Start` | `LabVM` | Boots VM and waits for network IP acquisition via KVP. |
 | **[`Stop-LabVM`](#stop-labvm)** | `Stop` | `LabVM` | Shuts down VM gracefully or forces an immediate power-off. |
+| **[`Start-Lab`](#start-lab)** | `Start` | `Lab` | Boots entire lab environment or cluster topology with IP discovery. |
+| **[`Stop-Lab`](#stop-lab)** | `Stop` | `Lab` | Stops entire lab environment or cluster topology gracefully or forcefully. |
+| **[`Enable-LabAutoStart`](#enable-labautostart)** | `Enable` | `LabAutoStart` | Configures lab VMs to boot on host startup (Hyper-V native or Scheduled Task). |
+| **[`Disable-LabAutoStart`](#disable-labautostart)** | `Disable` | `LabAutoStart` | Disables host boot auto-start and unregisters startup tasks. |
+| **[`Get-LabAutoStart`](#get-labautostart)** | `Get` | `LabAutoStart` | Queries host startup configurations and scheduled task states. |
 | **[`Test-LabPrerequisites`](#test-labprerequisites)** | `Test` | `LabPrerequisites` | Validates Hyper-V hypervisor, admin rights, and virtual switches. |
 
 ---
@@ -580,3 +585,156 @@ Test-LabPrerequisites
 
 #### Outputs
 - `[PSCustomObject]` with pass/fail status for each subsystem and actionable remedy messages.
+
+---
+
+### `Start-Lab`
+
+Powers on all discovered Linux lab virtual machines or nodes specified in a cluster topology JSON file.
+
+#### Syntax
+```powershell
+Start-Lab
+    [[-Name] <String[]>]
+    [-Wait]
+    [-TimeoutSeconds <Int32>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+
+Start-Lab
+    [-Path] <String>
+    [-Wait]
+    [-TimeoutSeconds <Int32>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-Name`** `<String[]>` *(Optional, ParameterSet: ByName, Position 0)*
+  Virtual machine name(s) or wildcard pattern. Defaults to all lab VMs.
+- **`-Path`** `<String>` *(Mandatory, ParameterSet: ByPath, Position 0)*
+  Path to a cluster topology JSON file.
+- **`-Wait`** `<SwitchParameter>` *(Optional)*
+  Waits for each VM to acquire an IPv4 address and display connection details.
+- **`-TimeoutSeconds`** `<Int32>` *(Optional, default: `45`)*
+  Maximum wait time for IP discovery per VM.
+
+#### Outputs
+- `[PSCustomObject[]]` with `Name`, `State`, `IPv4`, and `SSH`.
+
+---
+
+### `Stop-Lab`
+
+Gracefully shuts down or forces immediate power-off on running lab virtual machines or cluster nodes.
+
+#### Syntax
+```powershell
+Stop-Lab
+    [[-Name] <String[]>]
+    [-Force]
+    [-Wait]
+    [-TimeoutSeconds <Int32>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+
+Stop-Lab
+    [-Path] <String>
+    [-Force]
+    [-Wait]
+    [-TimeoutSeconds <Int32>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-Name`** `<String[]>` *(Optional, ParameterSet: ByName, Position 0)*
+  Virtual machine name(s) or wildcard pattern. Defaults to all running lab VMs.
+- **`-Path`** `<String>` *(Mandatory, ParameterSet: ByPath, Position 0)*
+  Path to a cluster topology JSON file.
+- **`-Force`** `<SwitchParameter>` *(Optional)*
+  Forces immediate turn-off rather than graceful guest OS shutdown.
+- **`-Wait`** `<SwitchParameter>` *(Optional)*
+  Blocks until VMs transition to the 'Off' state.
+
+#### Outputs
+- `[PSCustomObject[]]` with `Name` and `State`.
+
+---
+
+### `Enable-LabAutoStart`
+
+Configures lab virtual machines to start automatically upon computer startup.
+
+#### Syntax
+```powershell
+Enable-LabAutoStart
+    [[-Name] <String[]>]
+    [-Mode <String>]
+    [-DelaySeconds <Int32>]
+    [-Trigger <String>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+
+Enable-LabAutoStart
+    [-Path] <String>
+    [-Mode <String>]
+    [-DelaySeconds <Int32>]
+    [-Trigger <String>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-Mode`** `<String>` *(Optional, default: `'HyperV'`)*
+  - `HyperV`: Configures native Hyper-V VM `AutomaticStartAction = 'Start'`. Starts as SYSTEM on host boot before user login.
+  - `ScheduledTask`: Registers Windows Scheduled Task running `Start-Lab -Wait`.
+  - `Both`: Configures both native hypervisor actions and the scheduled task.
+- **`-DelaySeconds`** `<Int32>` *(Optional, default: `0`)*
+  Stagger delay in seconds before starting VMs upon host startup.
+- **`-Trigger`** `<String>` *(Optional, default: `'AtStartup'`)*
+  Trigger type for ScheduledTask mode (`AtStartup` or `AtLogOn`).
+
+---
+
+### `Disable-LabAutoStart`
+
+Disables computer startup auto-boot for lab virtual machines.
+
+#### Syntax
+```powershell
+Disable-LabAutoStart
+    [[-Name] <String[]>]
+    [-Mode <String>]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-Mode`** `<String>` *(Optional, default: `'HyperV'`)*
+  `HyperV`, `ScheduledTask`, or `Both`.
+
+---
+
+### `Get-LabAutoStart`
+
+Queries host startup auto-boot configuration for lab virtual machines and scheduled tasks.
+
+#### Syntax
+```powershell
+Get-LabAutoStart
+    [[-Name] <String[]>]
+    [[-Path] <String>]
+    [<CommonParameters>]
+```

@@ -32,6 +32,9 @@
     # Functions to export from this module, for best performance, do not use wildcards
     FunctionsToExport = @(
         'Checkpoint-LabVM',
+        'Disable-LabAutoStart',
+        'Enable-LabAutoStart',
+        'Get-LabAutoStart',
         'Get-LabBaseImage',
         'Get-LabCheckpoint',
         'Get-LabConfiguration',
@@ -49,7 +52,9 @@
         'Reset-LabVM',
         'Restore-LabVM',
         'Set-LabConfiguration',
+        'Start-Lab',
         'Start-LabVM',
+        'Stop-Lab',
         'Stop-LabVM',
         'Test-LabCluster',
         'Test-LabPrerequisites'

@@ -129,6 +129,11 @@ Total host disk space used for all 3 VMs combined: **under 500 MB**!
 | **`Remove-LabVM`** | Deletes VM, differencing disk, and temporary cloud-init ISO files. |
 | **`Start-LabVM`** | Boots VM and waits for network IP acquisition. |
 | **`Stop-LabVM`** | Gracefully shuts down or forces immediate power-off. |
+| **`Start-Lab`** | Powers on all lab VMs or cluster topology with IP discovery and connection banner. |
+| **`Stop-Lab`** | Gracefully or forcefully stops all lab VMs or cluster topology nodes. |
+| **`Enable-LabAutoStart`**| Configures lab VMs to boot automatically on computer startup (Hyper-V native or Scheduled Task). |
+| **`Disable-LabAutoStart`**| Disables computer startup auto-boot for lab VMs and tasks. |
+| **`Get-LabAutoStart`**| Queries startup auto-boot settings and scheduled task states. |
 | **`Test-LabPrerequisites`**| Validates Hyper-V hypervisor role, elevation, multi-volume disks, and virtual switches. |
 | **`Set-LabConfiguration`**| Configures persistent storage path (e.g., secondary drive `D:\`) and default switch. |
 | **`Get-LabConfiguration`**| Displays current active lab storage root and preferred virtual switch. |
