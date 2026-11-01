@@ -10,7 +10,7 @@ Describe "Module Manifest and Health" {
         $manifest.Name | Should -Be "HyperV-LinuxLab"
     }
 
-    It "Exports all 27 expected public cmdlets" {
+    It "Exports all 28 expected public cmdlets" {
         $manifest = Import-PowerShellDataFile -Path $script:manifestPath
         $expectedCmdlets = @(
             'Checkpoint-LabVM',
@@ -22,6 +22,7 @@ Describe "Module Manifest and Health" {
             'Get-LabConfiguration',
             'Get-LabProfile',
             'Get-LabVM',
+            'Install-LabHyperV',
             'New-LabBaseImage',
             'New-LabCloudInitISO',
             'New-LabCluster',

@@ -60,9 +60,12 @@ function Test-LabPrerequisites {
     $hyperVSupported = (-not $isHomeEdition)
     $checks["WindowsEditionSupported"] = $hyperVSupported
 
-    # 3. Hyper-V module / role installed
+    # 3. Hyper-V module / role installed & reboot state
     $hasHyperV = $null -ne (Get-Command 'Hyper-V\New-VM' -ErrorAction SilentlyContinue)
+    $pendingReboot = (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') -or
+                     (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired')
     $checks["HyperVModule"] = $hasHyperV
+    $checks["NoPendingReboot"] = (-not $pendingReboot)
 
     # 4. Virtual switch availability
     $switches = Hyper-V\Get-VMSwitch -ErrorAction SilentlyContinue
@@ -102,8 +105,10 @@ function Test-LabPrerequisites {
         "Re-launch PowerShell session as Administrator."
     } elseif (-not $hyperVSupported) {
         "Windows Home edition does not support Hyper-V natively. Windows Pro, Enterprise, Education, or Server is required."
+    } elseif ($pendingReboot) {
+        "A system restart is pending to complete Hyper-V / Windows component initialization. Please restart the host."
     } elseif (-not $hasHyperV) {
-        "Enable Hyper-V feature via: Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All"
+        "Enable Hyper-V feature via Install-LabHyperV or Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All"
     } elseif (-not $checks["VirtualSwitchAvailable"]) {
         "Create a virtual switch in Hyper-V Manager or run: New-VMSwitch -Name 'LabSwitch' -SwitchType Internal"
     } elseif (-not $cpuSufficient) {
@@ -124,6 +129,7 @@ function Test-LabPrerequisites {
         WindowsEdition         = "$caption ($regEdition)"
         HyperVSupported        = $hyperVSupported
         HyperVModule           = $hasHyperV
+        PendingReboot          = $pendingReboot
         VirtualSwitch          = $checks["VirtualSwitchAvailable"]
         LogicalCPUCores        = $totalCores
         TotalMemoryGB          = $totalRamGB

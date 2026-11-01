@@ -1,7 +1,7 @@
 # HyperV-LinuxLab Development & Refactoring Notes
 
 *Created: 2026-10-31T21:58:30-04:00*
-*Last Updated: 2026-10-31T22:14:30-04:00*
+*Last Updated: 2026-10-31T22:35:30-04:00*
 
 ## Index
 
@@ -15,14 +15,7 @@
 
 ## 1. Active Sprint Backlog
 
-- [x] **[PHASE-1] Core System Hardware Helper (`Get-LabHostSystemInfo.ps1`)** *(Archived: 2026-10-31T22:01:00-04:00)*
-- [x] **[PHASE-2] IP Address Discovery Unification (`Get-LabVMIPAddress.ps1`)** *(Archived: 2026-10-31T22:02:00-04:00)*
-- [x] **[PHASE-3] Secure Credential Handling (`Convert-LabSecureString.ps1`)** *(Archived: 2026-10-31T22:02:50-04:00)*
-- [x] **[PHASE-4] Error Handling & Recovery** *(Archived: 2026-10-31T22:05:40-04:00)*
-- [x] **[PHASE-5] Multi-Distro Base Image Support (`Debian12`, `AlmaLinux9`)** *(Archived: 2026-10-31T22:07:00-04:00)*
-- [x] **[PHASE-6] Cluster Node Name Resolution Unification (`Get-LabClusterNodeName.ps1`)** *(Archived: 2026-10-31T22:07:50-04:00)*
-- [x] **[PHASE-7] Comprehensive Private Function Unit Testing** *(Archived: 2026-10-31T22:08:40-04:00)*
-- [x] **[PHASE-8] Terminal Banner DRY & Documentation** *(Archived: 2026-10-31T22:14:00-04:00)*
+- [x] **[PHASE-9] Hyper-V Role Lifecycle & Automated Provisioning (`Install-LabHyperV.ps1`)** *(Archived: 2026-10-31T22:35:00-04:00)*
 
 ---
 
@@ -54,8 +47,8 @@ Available distributions in `New-LabBaseImage`:
 
 ## 4. Documentation & Secondary Updates Backlog
 
-- [x] Update `docs/CMDLET_REFERENCE.md` with new `-Distro` parameters (`Debian12`, `AlmaLinux9`).
-- [x] Update `README.md` distro support section.
+- [x] Update `docs/CMDLET_REFERENCE.md` with new `-Distro` parameters (`Debian12`, `AlmaLinux9`) and `Install-LabHyperV`.
+- [x] Update `README.md` distro support section and cmdlet table.
 
 ---
 
@@ -116,3 +109,12 @@ Available distributions in `New-LabBaseImage`:
 - **Files Modified**: `Public/Start-Lab.ps1`, `Public/Stop-Lab.ps1`, `Public/Start-LabVM.ps1`, `Public/New-LabVM.ps1`, `Public/Enable-LabAutoStart.ps1`, `Public/Disable-LabAutoStart.ps1`, `Public/Get-LabAutoStart.ps1`, `docs/CMDLET_REFERENCE.md`, `README.md`
 - **Summary**: Standardized CLI box formatting into `Format-LabBanner`. Updated cmdlet documentation and README with new distro support.
 - **Pester Results**: 84 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-10-31T22:35:00-04:00] PHASE 9: Hyper-V Role Lifecycle & Automated Provisioning
+- **Files Created**: `Public/Install-LabHyperV.ps1`, `Tests/Public/Install-LabHyperV.Tests.ps1`
+- **Files Modified**: `Public/Test-LabPrerequisites.ps1`, `HyperV-LinuxLab.psd1`, `Tests/Module.Tests.ps1`, `docs/CMDLET_REFERENCE.md`, `README.md`
+- **Summary**:
+  - Built `Install-LabHyperV` cmdlet with hardware virtualization validation (VT-x/AMD-V vs `HypervisorPresent`), Windows edition enforcement, third-party hypervisor conflict warning, and reboot handling (`-Restart`).
+  - Updated `Test-LabPrerequisites` with `PendingReboot` detection and guidance.
+  - Exported `Install-LabHyperV` in module manifest (28 public cmdlets).
+- **Pester Results**: 90 tests total (up from 84), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.

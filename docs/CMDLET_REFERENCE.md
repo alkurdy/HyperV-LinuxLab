@@ -29,6 +29,41 @@ Complete reference guide detailing all exported cmdlets, parameter sets, pipelin
 
 ## Cmdlet Specifications
 
+### `Install-LabHyperV`
+
+Validates hardware virtualization (VT-x/AMD-V) and enables the native Hyper-V optional feature and management tools. Detects co-existing hypervisors (VirtualBox, VMware), monitors pending reboot states, and supports automated computer restart.
+
+#### Syntax
+```powershell
+Install-LabHyperV
+    [-Restart]
+    [-Force]
+    [-WhatIf]
+    [-Confirm]
+    [<CommonParameters>]
+```
+
+#### Parameters
+
+- **`-Restart`** `<SwitchParameter>` *(Optional)*
+  Automatically restarts the host computer if feature installation requires a reboot.
+- **`-Force`** `<SwitchParameter>` *(Optional)*
+  Overrides non-fatal hardware virtualization warnings and co-existing hypervisor notifications.
+
+#### Outputs
+- `[PSCustomObject]` containing:
+  - `FeatureState`: Current feature state (`Enabled`)
+  - `HypervisorRunning`: Boolean indicating if hypervisor microkernel is active in Ring -1
+  - `RestartNeeded`: Boolean indicating if system reboot is pending
+  - `Status`: Overall readiness status (`Ready` or `RebootRequired`)
+
+#### Example
+```powershell
+Install-LabHyperV -Restart
+```
+
+---
+
 ### `New-LabBaseImage`
 
 Downloads an official, production-ready Cloud-Init VHDX image directly from distribution mirrors, verifies its SHA256 checksum, and marks it read-only.

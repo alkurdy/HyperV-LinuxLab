@@ -40,6 +40,7 @@
         'Get-LabConfiguration',
         'Get-LabProfile',
         'Get-LabVM',
+        'Install-LabHyperV',
         'New-LabBaseImage',
         'New-LabCloudInitISO',
         'New-LabCluster',

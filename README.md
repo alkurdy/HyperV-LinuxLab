@@ -119,6 +119,7 @@ Total host disk space used for all 3 VMs combined: **under 500 MB**!
 
 | Cmdlet | Purpose |
 | :--- | :--- |
+| **`Install-LabHyperV`** | Validates hardware virtualization (VT-x/AMD-V) and enables the Hyper-V role with reboot handling. |
 | **`New-LabBaseImage`** | Downloads official cloud VHDX image, verifies SHA256 checksum, sets read-only. |
 | **`Get-LabBaseImage`** | Lists cached base golden images and verification state. |
 | **`New-LabPassphrase`**| Generates memorable, human-friendly Diceware passphrases (e.g. `Swift-Falcon-42`). |
