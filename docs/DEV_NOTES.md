@@ -15,6 +15,12 @@
 
 ## 1. Active Sprint Backlog
 
+- [ ] **[PHASE-11] Windows Guest Node Support (Ansible & Hybrid Labs)**:
+  - Base Image: Microsoft official evaluation VHDX (Windows Server 2022 / 2025 Eval 180-day).
+  - Unattended Config: Build `Private\New-LabUnattendISO.ps1` generating `autounattend.xml` on virtual ISO.
+  - Ansible Telemetry: Auto-configure WinRM (HTTP/HTTPS) and Windows OpenSSH server on first boot.
+  - Routing & VM Creation: Update `New-LabVM` to branch between Cloud-Init (`cidata.iso`) and Unattend (`unattend.iso`).
+  - Inventory: Surface `WinRM` endpoint (`http://<ip>:5985`) in `Get-LabVM` and `metadata.json`.
 - [x] **[PHASE-10] Multi-Distro Coexistence & Local VM Metadata Persistence** *(Archived: 2026-10-31T23:18:00-04:00)*
 - [x] **[PHASE-9] Hyper-V Role Lifecycle & Automated Provisioning (`Install-LabHyperV.ps1`)** *(Archived: 2026-10-31T22:35:00-04:00)*
 
@@ -44,6 +50,18 @@ Available distributions in `New-LabBaseImage`:
    - Upstream GenericCloud archive (`debian-12-genericcloud-amd64.tar.xz`).
 4. **AlmaLinux 9**:
    - Upstream Azure VHD (`AlmaLinux-9-Azure-latest.x86_64.vhd`), downloaded directly without archive extraction.
+
+### 3.1 Planned Windows Guest Catalog & Ansible Integration
+- **Target OS**: Windows Server 2022 / 2025 Datacenter Evaluation (free official 180-day Microsoft evaluation VHD/VHDX).
+- **Provisioning Mechanism**: Virtual `unattend.iso` containing `autounattend.xml` with `<FirstLogonCommands>`.
+- **Ansible Automation Hooks**:
+  - Auto-executes `Configure-WinRM.ps1` on first boot.
+  - Opens ports 5985 (HTTP) and 5986 (HTTPS).
+  - Installs/enables native Windows OpenSSH Server for SSH-based Ansible control.
+  - Sets Administrator password and suppresses Network Location prompts.
+- **Integration Telemetry**:
+  - Hyper-V KVP reports Windows IP automatically via built-in Integration Services.
+  - `Get-LabVM` surfaces `WinRM: http://<ip>:5985` and `ansible_connection: winrm`.
 
 ---
 
