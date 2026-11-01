@@ -1,4 +1,4 @@
-﻿# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
+# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
 
 > **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 02: Installation & Removal](hyperv-02-installation-and-removal.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 04: Storage & Differencing Disks â†’](hyperv-04-storage-and-differencing-disks.md)
 
@@ -46,6 +46,12 @@ When running multi-node clusters (like Kubernetes or multi-distro testbeds), you
 Windows includes **WinNAT** (Windows Network Address Translation), a kernel-mode NAT router that forwards traffic from internal VM subnets through your host's internet connection.
 
 ### Native PowerShell: Building an Internal NAT Network
+
+> [!NOTE]
+> **Why `Hyper-V\New-VMSwitch` instead of just `New-VMSwitch`? (Module Qualification)**  
+> In PowerShell, prefixing a command with its module name (`<ModuleName>\<CmdletName>`) is known as **Module Qualification**.  
+> This protects against **command name collisions**. If you have third-party virtualization modules installed (such as **VMware PowerCLI**), they export identically named cmdlets like `Get-VM`, `New-VM`, and `New-VMSwitch`. If both modules are loaded, typing a bare `Get-VM` runs VMware's cmdlet and fails with: `You are not currently connected to any servers`. Explicitly writing `Hyper-V\New-VMSwitch` and `Hyper-V\Get-VM` instructs the PowerShell parser to route execution directly to Microsoft's native Hyper-V engine, ensuring your scripts run deterministically regardless of what other virtualization tools exist on the host.
+
 Here is how you manually build a dedicated `192.168.100.0/24` lab network from scratch:
 ```powershell
 # 1. Create the Internal Virtual Switch

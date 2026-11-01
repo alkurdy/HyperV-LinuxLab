@@ -1,4 +1,4 @@
-﻿# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
+# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
 
 > **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Lab 05: Multi-Distro Clusters](lab-05-multi-distro-clusters.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 02: Installation & Removal â†’](hyperv-02-installation-and-removal.md)
 
@@ -164,6 +164,19 @@ if ($competingProcesses) {
     Write-Warning "Detected active VMware / VirtualBox processes. Ensure they are updated to current versions supporting WHVP."
 }
 ```
+
+### Why the `Hyper-V\` Cmdlet Prefix? (PowerShell Module Qualification)
+Throughout this curriculum and module source code, you will frequently see cmdlets written with an explicit `Hyper-V\` prefix (e.g. `Hyper-V\New-VMSwitch`, `Hyper-V\Get-VM`, `Hyper-V\Start-VM`).
+
+In PowerShell, this syntax (`<ModuleName>\<CmdletName>`) is called **Module Qualification**.
+
+Why is this critical for enterprise systems engineering?
+1. **Cmdlet Name Collisions**: Multiple virtualization management modules use identical cmdlet names. If **VMware PowerCLI** is installed on your workstation, it also exports cmdlets named `Get-VM`, `New-VM`, and `Set-VM`. When both modules are loaded in the same session, typing bare `Get-VM` executes VMware's cmdlet first and throws an unhandled error:
+   ```text
+   Get-VM : You are not currently connected to any servers.
+   ```
+2. **Deterministic Script Execution**: Module qualification bypasses PowerShell's command precedence rules (which favor functions and aliases over cmdlets). It guarantees that automation scripts execute Microsoft's native Hyper-V binary module every single time.
+3. **Autoload Ambiguity Prevention**: Eliminates module auto-loading guesswork by directing the PowerShell parser directly to the specific binary manifest.
 
 ---
 

@@ -69,6 +69,7 @@ Looking for a specific concept or command? Jump directly to the relevant tutoria
 | **Virtual Switch & WinNAT** | [lab-03 Step 6](lab-03-processes-systemd-and-networking.md#6-modern-linux-networking-with-iproute2) | [hyperv-03 Topic 2](hyperv-03-virtual-networking.md#2-creating-an-isolated-internal-nat-switch) |
 | **Multi-Distro (Ubuntu/Debian/Alma)** | [lab-05](lab-05-multi-distro-clusters.md) | [hyperv-06 Topic 6](hyperv-06-vm-lifecycle-and-telemetry.md#6-multi-node-cluster-orchestration) |
 | **Hyper-V Complete Removal** | - | [hyperv-02 Topic 5](hyperv-02-installation-and-removal.md#5-how-to-completely-remove-hyper-v) |
+| **Module Qualification (`Hyper-V\Cmdlet`)** | - | [hyperv-01 Topic 6](hyperv-01-prerequisites-and-hardware.md#why-the-hyper-v-cmdlet-prefix-powershell-module-qualification) |
 | **UEFI & Secure Boot Template** | [lab-01 Step 4](lab-01-deployment-and-ssh.md#step-4-spin-up-your-linux-lab-vm) | [hyperv-05 Topic 2](hyperv-05-vm-architecture-and-cloud-init.md#2-linux-secure-boot--uefi-certificate-authorities) |
 | **IP Resolution via KVP** | [lab-01 Step 5](lab-01-deployment-and-ssh.md#step-5-the-on-screen-connection-banner) | [hyperv-03 Topic 5](hyperv-03-virtual-networking.md#5-resolving-guest-ips-without-external-dhcp-servers) |
 | **System Calls (`strace`)** | [lab-02 Step 7](lab-02-linux-mental-model-and-filesystems.md#7-system-calls-how-user-space-talks-to-the-kernel) | - |

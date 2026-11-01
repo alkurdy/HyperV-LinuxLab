@@ -92,6 +92,15 @@ Rather than requiring static IP configurations or slow ping sweeps, `HyperV-Linu
 `Get-VM -Name $Name | Select-Object -ExpandProperty NetworkAdapters | Select-Object -ExpandProperty IPAddresses`
 This returns the assigned IPv4 address within 2 seconds of the Linux network stack coming up.
 
+### 3.5 PowerShell Module Qualification & Collision Defense
+To guarantee deterministic execution on hosts that run multiple virtualization systems, `HyperV-LinuxLab` strictly qualifies native Hyper-V cmdlets using the `Hyper-V\` namespace (e.g., `Hyper-V\Get-VM`, `Hyper-V\New-VM`, `Hyper-V\New-VMSwitch`, `Hyper-V\Stop-VM`).
+
+**Why this is enforced:**
+- Third-party virtualization modules (such as **VMware PowerCLI**) export identical command names (`Get-VM`, `New-VM`).
+- When both modules are loaded in the same session, PowerShell's command precedence can route unqualified calls to VMware's cmdlet, causing commands to fail with:
+  `Get-VM : You are not currently connected to any servers.`
+- Explicit module qualification (`Hyper-V\<Cmdlet>`) bypasses ambiguity, functions, and aliases, ensuring direct binding to Microsoft's native Hyper-V engine.
+
 ---
 
 ## 4. Directory & Repository Layout
