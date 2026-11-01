@@ -1,7 +1,16 @@
 # HyperV-LinuxLab Development & Refactoring Notes
 
-*Created: 2026-10-31T21:58:30-04:00*
-*Last Updated: 2026-10-31T23:25:00-04:00*
+*Created: 2026-10-31T21:58:30-04:00*  
+*Last Updated: 2026-10-31T23:51:00-04:00*
+
+## Current Machine State & Next Session Hand-off
+- **Hyper-V Feature State**: `Disabled` (via `Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart`).
+- **Windows CBS State**: `PendingReboot: True` in `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending`.
+- **Lab Storage**: Completely wiped on target drives. Non-lab VMs preserved intact.
+- **Git State**: Clean working tree on `main`, synchronized with remote.
+- **Immediate Step On Resume**: Reboot host (`Restart-Computer`) to unload `hvix64.sys` microkernel, then run validation runbook below.
+
+---
 
 ## Index
 
@@ -21,45 +30,41 @@
 ### Validation Runbook:
 
 ```powershell
-# 1. Baseline Pre-Flight (Elevated PowerShell 7 or 5.1)
-Import-Module .\HyperV-LinuxLab.psd1 -Force
-Test-LabPrerequisites -Detailed
-
-# 2. Uninstall Hyper-V Role (Simulate clean host machine)
-# NOTE: Host will prompt or require restart
-Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
+# 1. Host Restart (Unload hypervisor microkernel)
 Restart-Computer
 
-# 3. Post-Uninstall Verification (After Reboot)
+# 2. Post-Uninstall Verification (In elevated PowerShell 7 or 5.1)
 Import-Module .\HyperV-LinuxLab.psd1 -Force
 $pre = Test-LabPrerequisites -Detailed
 # Expected:
 #   $pre.Status == 'Failed'
 #   $pre.HyperVModule == $false
+#   $pre.PendingReboot == $false
 #   Recommendation recommends running Install-LabHyperV
 
-# 4. Execute Role Installation via Lab Tool
+# 3. Execute Role Installation via Lab Tool
 Install-LabHyperV -Restart
 # Expected:
 #   - Validates firmware VT-x/AMD-V
 #   - Validates Windows Edition (Pro/Enterprise/Server)
 #   - Checks third-party hypervisors (VirtualBox, VMware)
 #   - Enables Microsoft-Hyper-V-All feature
-#   - Detects pending reboot state and reboots computer
+#   - Detects pending reboot state and reboots computer automatically
 
-# 5. Post-Reinstall Verification (After Reboot)
+# 4. Post-Reinstall Verification (After Automated Reboot)
 Import-Module .\HyperV-LinuxLab.psd1 -Force
 Test-LabPrerequisites -Detailed
 # Expected: Status == 'Ready'
 
-# 6. End-to-End Lab Deployment Test
+# 5. End-to-End Lab Deployment Test
 # Spin up 3-node heterogeneous cluster (Ubuntu + Debian + AlmaLinux)
-New-LabCluster -Path .\examples\multi-distro-cluster.json
+New-LabCluster -Path .\examples\multi-distro-cluster.json -AutoDownload
 
-# Verify metadata and credentials recall
+# Verify metadata, IPs, and credentials recall
 Get-LabVM
+Test-LabCluster -Path .\examples\multi-distro-cluster.json
 
-# Teardown
+# Clean Teardown
 Remove-LabCluster -Path .\examples\multi-distro-cluster.json -Force
 ```
 
@@ -207,3 +212,30 @@ Available distributions in `New-LabBaseImage`:
   - `Public/Start-LabVM.ps1` & `Public/Start-Lab.ps1`: Integrated metadata update on dynamic IP acquisition.
   - `Tests/Public/New-LabVM.Tests.ps1`, `Tests/Public/Get-LabVM.Tests.ps1`, `Tests/Public/Cluster.Tests.ps1`: Added unit tests for multi-distro standup and metadata inspection.
 - **Pester Results**: 98 tests total (up from 90), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-10-31T23:51:00-04:00] PHASE 12: Tutorials Hub Standardization, Interactive Navigation & PowerShell Module Qualification
+- **Files Created**:
+  - `tutorials/lab-01-deployment-and-ssh.md`: Lab 01 hands-on deployment, Scream test, key/passphrase login.
+  - `tutorials/lab-02-linux-mental-model-and-filesystems.md`: Lab 02 Linux mental model, `/proc`/`/sys`, permissions, `strace`.
+  - `tutorials/lab-03-processes-systemd-and-networking.md`: Lab 03 PID 1 ancestry, `systemctl`, `journalctl`, pipes, `iproute2`.
+  - `tutorials/lab-04-snapshots-and-disaster-recovery.md`: Lab 04 break-fix drills, 2s snapshot rollback, 3s differencing reset.
+  - `tutorials/lab-05-multi-distro-clusters.md`: Lab 05 heterogeneous multi-distro cluster coexistence, `sudo` vs `wheel`.
+  - `tutorials/hyperv-01-prerequisites-and-hardware.md`: Hyper-V 01 silicon, SKU gating, WHVP, module qualification.
+  - `tutorials/hyperv-02-installation-and-removal.md`: Hyper-V 02 DISM features, clean removal, CBS log debugging.
+  - `tutorials/hyperv-03-virtual-networking.md`: Hyper-V 03 WinNAT, vSwitches, VMBus, module qualification callout.
+  - `tutorials/hyperv-04-storage-and-differencing-disks.md`: Hyper-V 04 VHDX blocks, pointer chains, Scream test.
+  - `tutorials/hyperv-05-vm-architecture-and-cloud-init.md`: Hyper-V 05 Gen2 UEFI, Secure Boot CA, NoCloud ISO9660.
+  - `tutorials/hyperv-06-vm-lifecycle-and-telemetry.md`: Hyper-V 06 native power states, non-blocking telemetry, metadata.
+- **Files Removed**:
+  - `docs/01_DEPLOYMENT_AND_SSH_LOGIN.md`, `docs/02_LINUX_ESSENTIALS_OVERVIEW.md`, `docs/TUTORIAL_LEARNING_LINUX.md` (consolidated into `tutorials/`).
+  - `tutorials/01-prerequisites-and-hardware.md` through `tutorials/06-vm-lifecycle-and-telemetry.md` (renamed with standardized `hyperv-` prefix).
+- **Files Modified**:
+  - `tutorials/README.md`: Built comprehensive curriculum hub with interactive quick-jump matrix, visual tracks, and reading guidance.
+  - `README.md`: Updated tutorial index links to new track structure.
+  - `docs/SPECIFICATION.md`: Added Section 3.5 documenting PowerShell Module Qualification & Collision Defense (`Hyper-V\<Cmdlet>`).
+- **Summary**:
+  - Consolidated all repository tutorials into a unified `tutorials/` hub with two distinct tracks (Track 1: Hands-On Linux Lab, Track 2: Hyper-V Systems Engineering).
+  - Added top and bottom navigation bars across all 11 tutorials for seamless reading on GitHub.
+  - Documented PowerShell Module Qualification (`Hyper-V\New-VMSwitch`, `Hyper-V\Get-VM`) across tutorials and specification to explain collision prevention with third-party tools like VMware PowerCLI.
+  - 100% internal markdown links verified, zero machine-specific paths committed.
+- **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
