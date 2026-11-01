@@ -29,12 +29,7 @@ function Get-LabTargetVM {
         }
         $cluster = Get-Content -Path $Path -Raw | ConvertFrom-Json
         foreach ($node in $cluster.Nodes) {
-            $nodeName = if ($cluster.ClusterName -and -not $node.Name.StartsWith($cluster.ClusterName)) {
-                "$($cluster.ClusterName)-$($node.Name)"
-            } else {
-                $node.Name
-            }
-            $targetNames += $nodeName
+            $targetNames += (Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $node.Name)
         }
     } elseif ($Name -and $Name.Count -gt 0) {
         $hasWildcardOnly = ($Name.Count -eq 1 -and $Name[0] -eq '*')

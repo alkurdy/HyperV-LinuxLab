@@ -90,15 +90,8 @@ function Stop-Lab {
 
         # Standardized Terminal Summary Box
         $tableOutput = ($results | Format-Table Name, State | Out-String).Trim()
-
-        Write-Information @"
-
-============================================================
- [OK] Hyper-V Linux Lab Stopped ($($results.Count) Nodes)
-------------------------------------------------------------
-$tableOutput
-============================================================
-"@ -InformationAction Continue
+        $banner = Format-LabBanner -Title "[OK] Hyper-V Linux Lab Stopped ($($results.Count) Nodes)" -Content $tableOutput
+        Write-Information $banner -InformationAction Continue
 
         return $results
     }

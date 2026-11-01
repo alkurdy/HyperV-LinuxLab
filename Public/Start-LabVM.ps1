@@ -39,7 +39,12 @@ function Start-LabVM {
 
             if ($PSCmdlet.ShouldProcess($vmName, "Start Hyper-V Virtual Machine")) {
                 if ($vm.State -ne 'Running') {
-                    Hyper-V\Start-VM -Name $vmName | Out-Null
+                    try {
+                        Hyper-V\Start-VM -Name $vmName -ErrorAction Stop | Out-Null
+                    } catch {
+                        Write-Error "Failed to start virtual machine '$vmName': $($_.Exception.Message)"
+                        continue
+                    }
                 }
 
                 $ip = ""
@@ -47,17 +52,14 @@ function Start-LabVM {
                     Write-Information "Waiting for VM '$vmName' to acquire an IP address..." -InformationAction Continue
                     $ip = Get-LabVMIPAddress -VMName $vmName -TimeoutSeconds $TimeoutSeconds
                     if ($ip) {
-                        Write-Information @"
-
-============================================================
- [OK] Linux Lab VM Ready!
-------------------------------------------------------------
+                        $infoContent = @"
  Name    : $vmName
  Status  : Running
  IPv4    : $ip
  Connect : ssh labadmin@$ip
-============================================================
-"@ -InformationAction Continue
+"@
+                        $banner = Format-LabBanner -Title "[OK] Linux Lab VM Ready!" -Content $infoContent
+                        Write-Information $banner -InformationAction Continue
                     } else {
                         Write-Warning "VM '$vmName' started but did not report an IP within ${TimeoutSeconds}s."
                     }

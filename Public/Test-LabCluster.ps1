@@ -56,11 +56,7 @@ function Test-LabCluster {
             continue
         }
 
-        $fullNodeName = if ($cluster.ClusterName -and -not $n.Name.StartsWith($cluster.ClusterName)) {
-            "$($cluster.ClusterName)-$($n.Name)"
-        } else {
-            $n.Name
-        }
+        $fullNodeName = Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $n.Name
 
         if ($nodeNames -contains $fullNodeName) {
             $errors += "Duplicate node name detected: '$fullNodeName'."
@@ -83,20 +79,13 @@ function Test-LabCluster {
     }
 
     # Host hardware capacity review
-    $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-    $hostRamGB = if ($cs -and $cs.TotalPhysicalMemory) { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) } else { 0.0 }
-
-    $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
-    $freeRamGB = if ($os -and $os.FreePhysicalMemory) { [math]::Round($os.FreePhysicalMemory / 1MB, 1) } else { 0.0 }
-
-    $processors = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue
-    $totalHostCores = 0
-    foreach ($p in $processors) {
-        $totalHostCores += $p.NumberOfLogicalProcessors
-    }
-
-    $drive = Get-PSDrive -Name C -ErrorAction SilentlyContinue
-    $freeStorageGB = if ($drive) { [math]::Round($drive.Free / 1GB, 2) } else { 0.0 }
+    $labStorage = Get-LabStoragePath
+    $hostInfo = Get-LabHostSystemInfo -TargetPath $labStorage
+    $hostRamGB = $hostInfo.TotalMemoryGB
+    $freeRamGB = $hostInfo.FreeMemoryGB
+    $totalHostCores = $hostInfo.LogicalCPUCores
+    $freeStorageGB = $hostInfo.TargetFreeStorageGB
+    $targetDriveLetter = $hostInfo.TargetDriveLetter
     $minStorageRequired = 10 + ($cluster.Nodes.Count * 2)
 
     # Threshold reviews
@@ -122,7 +111,7 @@ function Test-LabCluster {
     }
 
     if ($freeStorageGB -lt $minStorageRequired) {
-        $errors += "Cluster requires at least ${minStorageRequired} GB free disk space. Volume C: only has ${freeStorageGB} GB free."
+        $errors += "Cluster requires at least ${minStorageRequired} GB free disk space. Volume $($targetDriveLetter): only has ${freeStorageGB} GB free."
         $warnings += [PSCustomObject]@{
             Resource  = "Storage"
             Required  = "${minStorageRequired} GB"

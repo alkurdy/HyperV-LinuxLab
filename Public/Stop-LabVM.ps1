@@ -34,10 +34,15 @@ function Stop-LabVM {
 
             if ($PSCmdlet.ShouldProcess($vmName, "Stop Hyper-V Virtual Machine")) {
                 if ($vm.State -eq 'Running') {
-                    if ($Force) {
-                        Hyper-V\Stop-VM -Name $vmName -TurnOff -Force | Out-Null
-                    } else {
-                        Hyper-V\Stop-VM -Name $vmName | Out-Null
+                    try {
+                        if ($Force) {
+                            Hyper-V\Stop-VM -Name $vmName -TurnOff -Force -ErrorAction Stop | Out-Null
+                        } else {
+                            Hyper-V\Stop-VM -Name $vmName -ErrorAction Stop | Out-Null
+                        }
+                    } catch {
+                        Write-Error "Failed to stop virtual machine '$vmName': $($_.Exception.Message)"
+                        continue
                     }
                 }
 

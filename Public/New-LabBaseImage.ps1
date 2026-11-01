@@ -19,7 +19,7 @@ function New-LabBaseImage {
     [OutputType([PSCustomObject])]
     param(
         [Parameter(Position = 0)]
-        [ValidateSet("Ubuntu2404", "Ubuntu2204")]
+        [ValidateSet("Ubuntu2404", "Ubuntu2204", "Debian12", "AlmaLinux9")]
         [string]$Distro = "Ubuntu2404",
 
         [Parameter(Position = 1)]
@@ -48,6 +48,16 @@ function New-LabBaseImage {
             Url            = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64-azure.vhd.tar.gz"
             InternalVhd    = "livecd.ubuntu-cpc.azure.vhd"
             TargetFileName = "ubuntu-22.04-server-cloudimg-amd64.vhdx"
+        }
+        "Debian12" = @{
+            Url            = "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.tar.xz"
+            InternalVhd    = "disk.raw"
+            TargetFileName = "debian-12-genericcloud-amd64.vhdx"
+        }
+        "AlmaLinux9" = @{
+            Url            = "https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-Azure-latest.x86_64.vhd"
+            InternalVhd    = "AlmaLinux-9-Azure-latest.x86_64.vhd"
+            TargetFileName = "almalinux-9-azure-amd64.vhdx"
         }
     }
 
@@ -82,26 +92,38 @@ function New-LabBaseImage {
         }
     }
 
-    if ($PSCmdlet.ShouldProcess($targetFile, "Download $Distro cloud image from $($entry.Url) and convert to VHDX")) {
-        try {
-            Write-Information "Downloading $Distro cloud image archive (~600MB - 800MB)..." -InformationAction Continue
-            Invoke-WebRequest -Uri $entry.Url -OutFile $archiveFile -UseBasicParsing
+    $isArchive = ($entry.Url -match '\.(tar\.gz|tgz|tar\.xz)$')
 
-            Write-Information "Extracting VHD from archive..." -InformationAction Continue
-            $extractOutput = & tar.exe -xzf $archiveFile -C $DestinationPath 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to extract cloud image archive: $extractOutput"
+    if ($PSCmdlet.ShouldProcess($targetFile, "Download $Distro cloud image from $($entry.Url) and convert to VHDX")) {
+        $extractedVhd = $null
+        try {
+            Write-Information "Downloading $Distro cloud image (~600MB - 800MB)..." -InformationAction Continue
+            $downloadTarget = if ($isArchive) { $archiveFile } else { (Join-Path $DestinationPath $entry.InternalVhd) }
+            try {
+                Invoke-WebRequest -Uri $entry.Url -OutFile $downloadTarget -UseBasicParsing -ErrorAction Stop
+            } catch {
+                throw "Failed to download $Distro cloud image from '$($entry.Url)': $($_.Exception.Message)"
             }
 
-            # Locate extracted .vhd file
-            $extractedVhd = Join-Path $DestinationPath $entry.InternalVhd
-            if (-not (Test-Path $extractedVhd)) {
-                $foundVhd = Get-ChildItem -Path $DestinationPath -Filter "*.vhd" | Select-Object -First 1
-                if ($foundVhd) {
-                    $extractedVhd = $foundVhd.FullName
-                } else {
-                    throw "Extracted VHD not found in '$DestinationPath'."
+            if ($isArchive) {
+                Write-Information "Extracting disk image from archive..." -InformationAction Continue
+                $extractOutput = & tar.exe -xf $archiveFile -C $DestinationPath 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to extract cloud image archive: $extractOutput"
                 }
+
+                # Locate extracted .vhd or .raw file
+                $extractedVhd = Join-Path $DestinationPath $entry.InternalVhd
+                if (-not (Test-Path $extractedVhd)) {
+                    $foundVhd = Get-ChildItem -Path $DestinationPath -Filter "*.vhd" | Select-Object -First 1
+                    if ($foundVhd) {
+                        $extractedVhd = $foundVhd.FullName
+                    } else {
+                        throw "Extracted disk image not found in '$DestinationPath'."
+                    }
+                }
+            } else {
+                $extractedVhd = $downloadTarget
             }
 
             # Clear sparse attribute (Hyper-V Convert-VHD rejects sparse files with 0xC03A001A)
@@ -111,25 +133,26 @@ function New-LabBaseImage {
             Write-Information "Converting VHD to optimized dynamic VHDX ($($entry.TargetFileName))..." -InformationAction Continue
             Hyper-V\Convert-VHD -Path $extractedVhd -DestinationPath $targetFile -VHDType Dynamic -DeleteSource -ErrorAction Stop
 
-            # Optimize EFI GRUB configuration for NoCloud datasource and console redirection
-            Write-Information "Configuring EFI bootloader for fast NoCloud provisioning..." -InformationAction Continue
-            try {
-                $disk = Mount-VHD -Path $targetFile -Passthru -ErrorAction SilentlyContinue
-                if ($disk) {
-                    Start-Sleep -Seconds 1
-                    $part = Get-Disk -Number $disk.DiskNumber | Get-Partition | Where-Object { $_.PartitionNumber -eq 3 }
-                    if ($part) {
-                        $letters = 90..65 | ForEach-Object { [char]$_ }
-                        $used = Get-PSDrive -PSProvider FileSystem | ForEach-Object { $_.Name }
-                        $freeLetter = ($letters | Where-Object { $used -notcontains $_ } | Select-Object -First 1)
-                        $part | Set-Partition -NewDriveLetter $freeLetter -ErrorAction SilentlyContinue
-                        $grubCfg = Join-Path "$($freeLetter):" "EFI\ubuntu\grub.cfg"
-                        if (Test-Path $grubCfg) {
-                            $existingGrub = Get-Content $grubCfg -Raw
-                            $rootUuidMatch = [regex]::Match($existingGrub, 'search\.fs_uuid\s+([a-f0-9\-]+)')
-                            $rootUuid = if ($rootUuidMatch.Success) { $rootUuidMatch.Groups[1].Value } else { "" }
-                            if ($rootUuid) {
-                                $cleanGrub = @"
+            # Optimize EFI GRUB configuration for NoCloud datasource and console redirection (Ubuntu-specific)
+            if ($Distro -like "Ubuntu*") {
+                Write-Information "Configuring EFI bootloader for fast NoCloud provisioning..." -InformationAction Continue
+                try {
+                    $disk = Mount-VHD -Path $targetFile -Passthru -ErrorAction SilentlyContinue
+                    if ($disk) {
+                        Start-Sleep -Seconds 1
+                        $part = Get-Disk -Number $disk.DiskNumber | Get-Partition | Where-Object { $_.PartitionNumber -eq 3 }
+                        if ($part) {
+                            $letters = 90..65 | ForEach-Object { [char]$_ }
+                            $used = Get-PSDrive -PSProvider FileSystem | ForEach-Object { $_.Name }
+                            $freeLetter = ($letters | Where-Object { $used -notcontains $_ } | Select-Object -First 1)
+                            $part | Set-Partition -NewDriveLetter $freeLetter -ErrorAction SilentlyContinue
+                            $grubCfg = Join-Path "$($freeLetter):" "EFI\ubuntu\grub.cfg"
+                            if (Test-Path $grubCfg) {
+                                $existingGrub = Get-Content $grubCfg -Raw
+                                $rootUuidMatch = [regex]::Match($existingGrub, 'search\.fs_uuid\s+([a-f0-9\-]+)')
+                                $rootUuid = if ($rootUuidMatch.Success) { $rootUuidMatch.Groups[1].Value } else { "" }
+                                if ($rootUuid) {
+                                    $cleanGrub = @"
 search.fs_uuid $rootUuid root
 set default="0"
 set timeout=0
@@ -139,17 +162,18 @@ menuentry "Ubuntu Linux Lab" {
     initrd (`$root)/initrd.img
 }
 "@
-                                [System.IO.File]::WriteAllText($grubCfg, $cleanGrub.Replace("`r`n", "`n"))
+                                    [System.IO.File]::WriteAllText($grubCfg, $cleanGrub.Replace("`r`n", "`n"))
+                                }
                             }
+                            Remove-PartitionAccessPath -DiskNumber $disk.DiskNumber -PartitionNumber 3 -Accesspath "$($freeLetter):\" -ErrorAction SilentlyContinue
                         }
-                        Remove-PartitionAccessPath -DiskNumber $disk.DiskNumber -PartitionNumber 3 -Accesspath "$($freeLetter):\" -ErrorAction SilentlyContinue
+                        Dismount-VHD -Path $targetFile -ErrorAction SilentlyContinue
                     }
+                }
+                catch {
+                    Write-Verbose "EFI GRUB optimization skipped: $_"
                     Dismount-VHD -Path $targetFile -ErrorAction SilentlyContinue
                 }
-            }
-            catch {
-                Write-Verbose "EFI GRUB optimization skipped: $_"
-                Dismount-VHD -Path $targetFile -ErrorAction SilentlyContinue
             }
 
             # Lock file as Read-Only to guarantee parent differencing integrity
@@ -167,9 +191,12 @@ menuentry "Ubuntu Linux Lab" {
             }
         }
         finally {
-            # Clean up temporary archive file if still present
+            # Clean up temporary archive and intermediate VHD files if still present
             if (Test-Path $archiveFile) {
                 Remove-Item $archiveFile -Force -ErrorAction SilentlyContinue
+            }
+            if ($extractedVhd -and (Test-Path $extractedVhd)) {
+                Remove-Item $extractedVhd -Force -ErrorAction SilentlyContinue
             }
         }
     }

@@ -107,7 +107,7 @@ local-hostname: $Name
 
     # Set default lab password if omitted
     $plainPass = if ($null -ne $Password) {
-        [System.Net.NetworkCredential]::new('', $Password).Password
+        ConvertFrom-LabSecureString -SecureString $Password
     } else {
         New-LabPassphrase
     }

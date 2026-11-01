@@ -25,16 +25,7 @@ function Get-LabVM {
         }
 
         $results = foreach ($vm in $vms) {
-            $ip = ""
-            $adapter = Hyper-V\Get-VMNetworkAdapter -VMName $vm.Name -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($adapter) {
-                $validIPs = @($adapter.IPAddresses | Where-Object {
-                    $_ -and $_ -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$' -and $_ -notlike '169.254*' -and $_ -ne '127.0.0.1'
-                })
-                if ($validIPs.Count -gt 0) {
-                    $ip = $validIPs[0]
-                }
-            }
+            $ip = Get-LabVMIPAddress -VMName $vm.Name -TimeoutSeconds 0
 
             $diskSizeMB = 0.0
             $parentBase = ""

@@ -111,17 +111,11 @@ function New-LabVM {
 
     if ($PSCmdlet.ShouldProcess($Name, "Create Gen2 Differencing VM with parent '$parentPath'")) {
         # 1. Resolve Passphrase
-        $plainPassword = ""
         if (-not $Password) {
             $plainPassword = New-LabPassphrase
-            $sec = [System.Security.SecureString]::new()
-            foreach ($c in $plainPassword.ToCharArray()) {
-                $sec.AppendChar($c)
-            }
-            $sec.MakeReadOnly()
-            $Password = $sec
+            $Password = ConvertTo-LabSecureString -PlainText $plainPassword
         } else {
-            $plainPassword = [System.Net.NetworkCredential]::new('', $Password).Password
+            $plainPassword = ConvertFrom-LabSecureString -SecureString $Password
         }
 
         # 2. Create Child Differencing Disk
@@ -187,19 +181,16 @@ function New-LabVM {
                     Start-Sleep -Milliseconds 1500
                 }
 
-                Write-Information @"
-
-============================================================
- [OK] Linux Lab VM Ready!
-------------------------------------------------------------
+                $infoContent = @"
  Name     : $Name
  Status   : Running
  IPv4     : $ipAddress
  User     : $Username
  Password : $plainPassword
  Connect  : ssh $Username@$ipAddress
-============================================================
-"@ -InformationAction Continue
+"@
+                $banner = Format-LabBanner -Title "[OK] Linux Lab VM Ready!" -Content $infoContent
+                Write-Information $banner -InformationAction Continue
             } else {
                 Write-Information "[OK] VM '$Name' started. IP will populate once cloud-init completes." -InformationAction Continue
             }

@@ -24,7 +24,11 @@ function Resolve-LabProfile {
 
     # 1. Absolute / relative path check
     if (Test-Path $Profile) {
-        $raw = Get-Content -Path $Profile -Raw | ConvertFrom-Json
+        $raw = try {
+            Get-Content -Path $Profile -Raw | ConvertFrom-Json
+        } catch {
+            throw "Failed to parse profile JSON file at '$Profile': $($_.Exception.Message)"
+        }
         return [PSCustomObject]@{
             Name        = if ($raw.Name) { $raw.Name } else { (Split-Path $Profile -LeafBase) }
             Description = if ($raw.Description) { $raw.Description } else { "Custom profile loaded from $Profile" }
@@ -44,7 +48,11 @@ function Resolve-LabProfile {
 
     foreach ($p in $candidatePaths) {
         if (Test-Path $p) {
-            $raw = Get-Content -Path $p -Raw | ConvertFrom-Json
+            $raw = try {
+                Get-Content -Path $p -Raw | ConvertFrom-Json
+            } catch {
+                throw "Failed to parse profile JSON file at '$p': $($_.Exception.Message)"
+            }
             return [PSCustomObject]@{
                 Name        = if ($raw.Name) { $raw.Name } else { (Split-Path $p -LeafBase) }
                 Description = if ($raw.Description) { $raw.Description } else { "" }

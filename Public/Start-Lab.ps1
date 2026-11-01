@@ -71,16 +71,7 @@ function Start-Lab {
                         Write-Warning "VM '$vmName' started but did not report an IP within ${TimeoutSeconds}s."
                     }
                 } else {
-                    # Attempt quick non-blocking discovery of existing IP
-                    $adapter = Hyper-V\Get-VMNetworkAdapter -VMName $vmName -ErrorAction SilentlyContinue | Select-Object -First 1
-                    if ($adapter) {
-                        $validIPs = @($adapter.IPAddresses | Where-Object {
-                            $_ -and $_ -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$' -and $_ -notlike '169.254*' -and $_ -ne '127.0.0.1'
-                        })
-                        if ($validIPs.Count -gt 0) {
-                            $ip = $validIPs[0]
-                        }
-                    }
+                    $ip = Get-LabVMIPAddress -VMName $vmName -TimeoutSeconds 0
                 }
 
                 $results += [PSCustomObject]@{
@@ -101,15 +92,8 @@ function Start-Lab {
         }
 
         $tableOutput = ($results | Format-Table Name, State, IPv4, SSH | Out-String).Trim()
-
-        Write-Information @"
-
-============================================================
- [LAB READY] Hyper-V Linux Lab ($($results.Count) Nodes)
-------------------------------------------------------------
-$tableOutput$sshListing
-============================================================
-"@ -InformationAction Continue
+        $banner = Format-LabBanner -Title "[LAB READY] Hyper-V Linux Lab ($($results.Count) Nodes)" -Content "$tableOutput$sshListing"
+        Write-Information $banner -InformationAction Continue
 
         return $results
     }

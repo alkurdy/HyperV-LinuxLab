@@ -68,38 +68,6 @@ function Test-LabPrerequisites {
     $switches = Hyper-V\Get-VMSwitch -ErrorAction SilentlyContinue
     $checks["VirtualSwitchAvailable"] = ($null -ne $switches -and $switches.Count -gt 0)
 
-    # 5. Host CPU Core capacity
-    $processors = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue
-    $totalCores = 0
-    foreach ($p in $processors) {
-        $totalCores += $p.NumberOfLogicalProcessors
-    }
-    $cpuSufficient = ($totalCores -ge $MinimumCPUCount)
-    $checks["CPUCoresSufficient"] = $cpuSufficient
-
-    # 6. Host RAM capacity (minimum required for lab virtualization)
-    $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-    $totalRamGB = if ($cs -and $cs.TotalPhysicalMemory) { [math]::Round($cs.TotalPhysicalMemory / 1GB, 1) } else { 0.0 }
-    $ramSufficient = ($totalRamGB -ge $MinimumMemoryGB)
-    $checks["MemoryCapacitySufficient"] = $ramSufficient
-
-    # 7. Storage volume discovery across all fixed local drives
-    $disks = Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 3 }
-    $discoveredVolumes = @()
-    $recommendedDrive = "C:"
-    $maxFreeBytes = 0
-
-    foreach ($d in $disks) {
-        $freeGB = [math]::Round($d.FreeSpace / 1GB, 1)
-        $totalGB = [math]::Round($d.Size / 1GB, 1)
-        $label = if ($d.VolumeName) { " ($($d.VolumeName))" } else { "" }
-        $discoveredVolumes += "$($d.DeviceID)$label - ${freeGB} GB free of ${totalGB} GB"
-        if ($d.FreeSpace -gt $maxFreeBytes) {
-            $maxFreeBytes = $d.FreeSpace
-            $recommendedDrive = $d.DeviceID
-        }
-    }
-
     # Evaluate target volume (explicit parameter, persistent config, or fallback)
     $targetPath = if ($StoragePath -and $StoragePath -ne "C:\") {
         $StoragePath
@@ -107,9 +75,20 @@ function Test-LabPrerequisites {
         Get-LabStoragePath -ExplicitPath $StoragePath
     }
 
-    $targetLetter = $targetPath.Substring(0, 1)
-    $targetDisk = $disks | Where-Object { $_.DeviceID -eq "$targetLetter`:" } | Select-Object -First 1
-    $targetFreeGB = if ($targetDisk) { [math]::Round($targetDisk.FreeSpace / 1GB, 1) } else { 0.0 }
+    # 5, 6, 7. Host Hardware Telemetry (CPU, RAM, Storage Volumes)
+    $hostInfo = Get-LabHostSystemInfo -TargetPath $targetPath
+    $totalCores = $hostInfo.LogicalCPUCores
+    $cpuSufficient = ($totalCores -ge $MinimumCPUCount)
+    $checks["CPUCoresSufficient"] = $cpuSufficient
+
+    $totalRamGB = $hostInfo.TotalMemoryGB
+    $ramSufficient = ($totalRamGB -ge $MinimumMemoryGB)
+    $checks["MemoryCapacitySufficient"] = $ramSufficient
+
+    $discoveredVolumes = $hostInfo.DiscoveredVolumes
+    $recommendedDrive = $hostInfo.RecommendedDrive
+    $targetLetter = $hostInfo.TargetDriveLetter
+    $targetFreeGB = $hostInfo.TargetFreeStorageGB
     $storageSufficient = ($targetFreeGB -ge $MinimumFreeStorageGB)
     $checks["StorageCapacitySufficient"] = $storageSufficient
 

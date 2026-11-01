@@ -29,6 +29,17 @@ Describe "Start-LabVM and Stop-LabVM" {
                 $Name -eq "node-start"
             }
         }
+
+        It "Catches and reports hypervisor error when Start-VM fails" {
+            Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Start-VM' -MockWith {
+                throw "Hyper-V out of memory"
+            }
+
+            $errors = @()
+            $result = Start-LabVM -Name "node-start" -ErrorVariable errors -ErrorAction SilentlyContinue
+            $result | Should -BeNullOrEmpty
+            ($errors | Where-Object { $_.Exception.Message -like "*Failed to start virtual machine 'node-start'*" }) | Should -Not -BeNullOrEmpty
+        }
     }
 
     Context "Stop-LabVM" {
@@ -51,6 +62,17 @@ Describe "Start-LabVM and Stop-LabVM" {
             Assert-MockCalled -ModuleName 'HyperV-LinuxLab' 'Hyper-V\Stop-VM' -Times 1 -ParameterFilter {
                 $Name -eq "node-stop"
             }
+        }
+
+        It "Catches and reports hypervisor error when Stop-VM fails" {
+            Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Stop-VM' -MockWith {
+                throw "Hyper-V access denied"
+            }
+
+            $errors = @()
+            $result = Stop-LabVM -Name "node-stop" -ErrorVariable errors -ErrorAction SilentlyContinue
+            $result | Should -BeNullOrEmpty
+            ($errors | Where-Object { $_.Exception.Message -like "*Failed to stop virtual machine 'node-stop'*" }) | Should -Not -BeNullOrEmpty
         }
     }
 }

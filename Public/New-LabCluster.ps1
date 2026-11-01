@@ -50,21 +50,13 @@ function New-LabCluster {
 
             # Generate cluster-wide default passphrase
             $clusterPassphrase = New-LabPassphrase
-            $clusterSec = [System.Security.SecureString]::new()
-            foreach ($c in $clusterPassphrase.ToCharArray()) {
-                $clusterSec.AppendChar($c)
-            }
-            $clusterSec.MakeReadOnly()
+            $clusterSec = ConvertTo-LabSecureString -PlainText $clusterPassphrase
 
             Write-Information "--- Deploying Cluster '$($cluster.ClusterName)' ($($cluster.Nodes.Count) nodes) ---" -InformationAction Continue
 
             $deployed = @()
             foreach ($n in $cluster.Nodes) {
-                $fullNodeName = if ($cluster.ClusterName -and -not $n.Name.StartsWith($cluster.ClusterName)) {
-                    "$($cluster.ClusterName)-$($n.Name)"
-                } else {
-                    $n.Name
-                }
+                $fullNodeName = Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $n.Name
 
                 $ram = if ($n.MemoryGB) { [int]$n.MemoryGB } else { 2 }
                 $cpu = if ($n.CPU) { [int]$n.CPU } else { 2 }

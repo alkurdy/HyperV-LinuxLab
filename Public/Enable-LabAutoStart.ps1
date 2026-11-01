@@ -137,15 +137,8 @@ function Enable-LabAutoStart {
 
         # Standardized Terminal Summary Box
         $tableOutput = ($results | Format-Table Target, Type, AutomaticStartAction, DelaySeconds, Status | Out-String).Trim()
-
-        Write-Information @"
-
-============================================================
- [OK] Lab Auto-Start Enabled (Mode: $Mode)
-------------------------------------------------------------
-$tableOutput
-============================================================
-"@ -InformationAction Continue
+        $banner = Format-LabBanner -Title "[OK] Lab Auto-Start Enabled (Mode: $Mode)" -Content $tableOutput
+        Write-Information $banner -InformationAction Continue
 
         return $results
     }

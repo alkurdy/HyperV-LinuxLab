@@ -30,14 +30,8 @@ function Remove-LabCluster {
         }
 
         $cluster = Get-Content -Path $Path -Raw | ConvertFrom-Json
-        $nodeNames = @()
-        foreach ($n in $cluster.Nodes) {
-            $fullNodeName = if ($cluster.ClusterName -and -not $n.Name.StartsWith($cluster.ClusterName)) {
-                "$($cluster.ClusterName)-$($n.Name)"
-            } else {
-                $n.Name
-            }
-            $nodeNames += $fullNodeName
+        $nodeNames = foreach ($n in $cluster.Nodes) {
+            Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $n.Name
         }
 
         if ($Force -or $PSCmdlet.ShouldProcess($cluster.ClusterName, "Tear down $($nodeNames.Count) cluster nodes")) {

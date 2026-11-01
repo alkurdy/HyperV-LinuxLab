@@ -48,7 +48,7 @@ New-LabBaseImage
 
 - **`-Distro`** `<String>` *(Mandatory, Position 0)*
   The Linux distribution image to fetch.
-  - *Accepted Values*: `Ubuntu2404`, `Ubuntu2204`, `Debian12`
+  - *Accepted Values*: `Ubuntu2404`, `Ubuntu2204`, `Debian12`, `AlmaLinux9`
   - *Default*: `Ubuntu2404`
 - **`-DestinationPath`** `<String>` *(Optional, Position 1)*
   Local directory to store master images.

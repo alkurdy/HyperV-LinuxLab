@@ -29,6 +29,8 @@ function Get-LabBaseImage {
     $results = foreach ($f in $files) {
         $distroName = if ($f.Name -match "24\.04") { "Ubuntu2404" } `
                       elseif ($f.Name -match "22\.04") { "Ubuntu2204" } `
+                      elseif ($f.Name -match "debian") { "Debian12" } `
+                      elseif ($f.Name -match "almalinux") { "AlmaLinux9" } `
                       else { "Custom" }
 
         [PSCustomObject]@{

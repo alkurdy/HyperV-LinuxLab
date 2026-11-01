@@ -88,15 +88,8 @@ function Disable-LabAutoStart {
 
         # Standardized Terminal Summary Box
         $tableOutput = ($results | Format-Table Target, Type, AutomaticStartAction, Status | Out-String).Trim()
-
-        Write-Information @"
-
-============================================================
- [OK] Lab Auto-Start Disabled (Mode: $Mode)
-------------------------------------------------------------
-$tableOutput
-============================================================
-"@ -InformationAction Continue
+        $banner = Format-LabBanner -Title "[OK] Lab Auto-Start Disabled (Mode: $Mode)" -Content $tableOutput
+        Write-Information $banner -InformationAction Continue
 
         return $results
     }

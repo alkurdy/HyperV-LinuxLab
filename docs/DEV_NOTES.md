@@ -1,0 +1,118 @@
+# HyperV-LinuxLab Development & Refactoring Notes
+
+*Created: 2026-10-31T21:58:30-04:00*
+*Last Updated: 2026-10-31T22:14:30-04:00*
+
+## Index
+
+- [1. Active Sprint Backlog](#1-active-sprint-backlog)
+- [2. Architectural & DRY Tracking](#2-architectural--dry-tracking)
+- [3. Linux Distro Expansion Catalog](#3-linux-distro-expansion-catalog)
+- [4. Documentation & Secondary Updates Backlog](#4-documentation--secondary-updates-backlog)
+- [5. Completed & Archived Work Log](#5-completed--archived-work-log)
+
+---
+
+## 1. Active Sprint Backlog
+
+- [x] **[PHASE-1] Core System Hardware Helper (`Get-LabHostSystemInfo.ps1`)** *(Archived: 2026-10-31T22:01:00-04:00)*
+- [x] **[PHASE-2] IP Address Discovery Unification (`Get-LabVMIPAddress.ps1`)** *(Archived: 2026-10-31T22:02:00-04:00)*
+- [x] **[PHASE-3] Secure Credential Handling (`Convert-LabSecureString.ps1`)** *(Archived: 2026-10-31T22:02:50-04:00)*
+- [x] **[PHASE-4] Error Handling & Recovery** *(Archived: 2026-10-31T22:05:40-04:00)*
+- [x] **[PHASE-5] Multi-Distro Base Image Support (`Debian12`, `AlmaLinux9`)** *(Archived: 2026-10-31T22:07:00-04:00)*
+- [x] **[PHASE-6] Cluster Node Name Resolution Unification (`Get-LabClusterNodeName.ps1`)** *(Archived: 2026-10-31T22:07:50-04:00)*
+- [x] **[PHASE-7] Comprehensive Private Function Unit Testing** *(Archived: 2026-10-31T22:08:40-04:00)*
+- [x] **[PHASE-8] Terminal Banner DRY & Documentation** *(Archived: 2026-10-31T22:14:00-04:00)*
+
+---
+
+## 2. Architectural & DRY Tracking
+
+| Pattern | Status | Implementation Details |
+| :--- | :--- | :--- |
+| Hardware discovery (CIM) | **Refactored** | Centralized in `Private\Get-LabHostSystemInfo.ps1`. Eliminated duplicate CIM queries across prerequisites and cluster checks. |
+| IP extraction regex | **Refactored** | Centralized in `Private\Get-LabVMIPAddress.ps1` with `-TimeoutSeconds 0` instant non-blocking check. Removed duplicate code in `Get-LabVM` and `Start-Lab`. |
+| Credential conversions | **Refactored** | Extracted `ConvertTo-LabSecureString` and `ConvertFrom-LabSecureString` in `Private\Convert-LabSecureString.ps1`. |
+| Cluster node name resolving | **Refactored** | Centralized in `Private\Get-LabClusterNodeName.ps1`. Removed duplicate prefixing logic from `Get-LabTargetVM`, `New-LabCluster`, `Remove-LabCluster`, and `Test-LabCluster`. |
+| Terminal banner formatting | **Refactored** | Centralized in `Private\Format-LabBanner.ps1`. Removed redundant ASCII box string literals across 7 cmdlets. |
+
+---
+
+## 3. Linux Distro Expansion Catalog
+
+Available distributions in `New-LabBaseImage`:
+1. **Ubuntu 24.04 LTS (Noble)**:
+   - Upstream Azure cloud image archive (`noble-server-cloudimg-amd64-azure.vhd.tar.gz`).
+2. **Ubuntu 22.04 LTS (Jammy)**:
+   - Upstream Azure cloud image archive (`jammy-server-cloudimg-amd64-azure.vhd.tar.gz`).
+3. **Debian 12 (Bookworm)**:
+   - Upstream GenericCloud archive (`debian-12-genericcloud-amd64.tar.xz`).
+4. **AlmaLinux 9**:
+   - Upstream Azure VHD (`AlmaLinux-9-Azure-latest.x86_64.vhd`), downloaded directly without archive extraction.
+
+---
+
+## 4. Documentation & Secondary Updates Backlog
+
+- [x] Update `docs/CMDLET_REFERENCE.md` with new `-Distro` parameters (`Debian12`, `AlmaLinux9`).
+- [x] Update `README.md` distro support section.
+
+---
+
+## 5. Completed & Archived Work Log
+
+### [2026-10-31T22:01:00-04:00] PHASE 1: Hardware Telemetry Unification
+- **Files Created**: `Private/Get-LabHostSystemInfo.ps1`, `Tests/Private/Get-LabHostSystemInfo.Tests.ps1`
+- **Files Modified**: `Public/Test-LabPrerequisites.ps1`, `Public/Test-LabCluster.ps1`
+- **Summary**: Centralized CIM querying for CPU cores, RAM, and fixed disk volumes into `Get-LabHostSystemInfo`. Fixed hardcoded drive `C:` evaluation bug in `Test-LabCluster.ps1` to properly respect configured `StoragePath`.
+- **Tests Added**: 3 new tests. 100% passing.
+
+### [2026-10-31T22:02:00-04:00] PHASE 2: IP Address Discovery DRY Unification
+- **Files Modified**: `Private/Get-LabVMIPAddress.ps1`, `Public/Get-LabVM.ps1`, `Public/Start-Lab.ps1`
+- **Files Created**: `Tests/Private/Get-LabVMIPAddress.Tests.ps1`
+- **Summary**: Enhanced `Get-LabVMIPAddress` to support single-pass non-blocking lookup (`-TimeoutSeconds 0`). Removed duplicate adapter iteration and regex IP filtering from `Get-LabVM` and `Start-Lab`.
+- **Tests Added**: 3 new tests. 100% passing.
+
+### [2026-10-31T22:02:50-04:00] PHASE 3: Credential Handling Helper
+- **Files Created**: `Private/Convert-LabSecureString.ps1`, `Tests/Private/Convert-LabSecureString.Tests.ps1`
+- **Files Modified**: `Public/New-LabVM.ps1`, `Public/New-LabCluster.ps1`, `Public/New-LabCloudInitISO.ps1`
+- **Summary**: Built `ConvertTo-LabSecureString` and `ConvertFrom-LabSecureString`. Replaced redundant character loop appending and manual credential unwrapping.
+- **Tests Added**: 2 new tests. 100% passing.
+
+### [2026-10-31T22:05:40-04:00] PHASE 4: Error Handling & Fault Recovery
+- **Files Modified**: `Public/New-LabBaseImage.ps1`, `Private/Resolve-LabProfile.ps1`, `Public/Start-LabVM.ps1`, `Public/Stop-LabVM.ps1`
+- **Summary**:
+  - `New-LabBaseImage.ps1`: Added try/catch around `Invoke-WebRequest` with actionable network error reporting. Ensured intermediate `.vhd` is purged in `finally` block if conversion fails.
+  - `Resolve-LabProfile.ps1`: Added JSON parsing guard with file context if profile JSON is malformed.
+  - `Start-LabVM.ps1` & `Stop-LabVM.ps1`: Wrapped hypervisor calls in try/catch to capture and report hypervisor exceptions gracefully with `Write-Error`.
+- **Tests Added**: Error recovery tests added in `BaseImage.Tests.ps1`, `Resolve-LabProfile.Tests.ps1`, and `Start-Stop-LabVM.Tests.ps1`.
+
+### [2026-10-31T22:07:00-04:00] PHASE 5: Multi-Distro Base Image Support
+- **Files Modified**: `Public/New-LabBaseImage.ps1`, `Public/Get-LabBaseImage.ps1`, `Tests/Public/BaseImage.Tests.ps1`
+- **Summary**:
+  - Expanded `$imageCatalog` and parameter `ValidateSet` to support `Debian12` and `AlmaLinux9`.
+  - Added support for both archive-based (`.tar.gz`, `.tar.xz`) and direct `.vhd` downloads.
+  - Scoped Ubuntu-specific EFI GRUB patch to `Ubuntu*` distros.
+- **Tests Added**: 2 new tests for multi-distro discovery and direct VHD conversion.
+
+### [2026-10-31T22:07:50-04:00] PHASE 6: Cluster Node Name Resolution
+- **Files Created**: `Private/Get-LabClusterNodeName.ps1`, `Tests/Private/Get-LabClusterNodeName.Tests.ps1`
+- **Files Modified**: `Private/Get-LabTargetVM.ps1`, `Public/New-LabCluster.ps1`, `Public/Remove-LabCluster.ps1`, `Public/Test-LabCluster.ps1`
+- **Summary**: Created `Get-LabClusterNodeName` to eliminate 4x duplicate cluster node name prefix checking.
+- **Tests Added**: 3 new tests. 100% passing.
+
+### [2026-10-31T22:08:40-04:00] PHASE 7: Private Function Unit Test Suite
+- **Files Created**:
+  - `Tests/Private/Assert-Administrator.Tests.ps1`
+  - `Tests/Private/Assert-LabDiskSpace.Tests.ps1`
+  - `Tests/Private/Get-LabDefaultSwitch.Tests.ps1`
+  - `Tests/Private/Get-LabStoragePath.Tests.ps1`
+  - `Tests/Private/Get-LabTargetVM.Tests.ps1`
+- **Summary**: Created dedicated unit test coverage for every private helper.
+- **Pester Results**: 81 tests total (up from 50), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-10-31T22:14:00-04:00] PHASE 8: Terminal Banner DRY & Documentation
+- **Files Created**: `Private/Format-LabBanner.ps1`, `Tests/Private/Format-LabBanner.Tests.ps1`
+- **Files Modified**: `Public/Start-Lab.ps1`, `Public/Stop-Lab.ps1`, `Public/Start-LabVM.ps1`, `Public/New-LabVM.ps1`, `Public/Enable-LabAutoStart.ps1`, `Public/Disable-LabAutoStart.ps1`, `Public/Get-LabAutoStart.ps1`, `docs/CMDLET_REFERENCE.md`, `README.md`
+- **Summary**: Standardized CLI box formatting into `Format-LabBanner`. Updated cmdlet documentation and README with new distro support.
+- **Pester Results**: 84 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.

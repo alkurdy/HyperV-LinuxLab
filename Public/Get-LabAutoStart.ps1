@@ -60,15 +60,8 @@ function Get-LabAutoStart {
         }
 
         $tableOutput = ($results | Format-Table Target, Type, AutomaticStartAction, DelaySeconds, Status | Out-String).Trim()
-
-        Write-Information @"
-
-============================================================
- [LAB AUTO-START STATUS] Hyper-V Linux Lab
-------------------------------------------------------------
-$tableOutput
-============================================================
-"@ -InformationAction Continue
+        $banner = Format-LabBanner -Title "[LAB AUTO-START STATUS] Hyper-V Linux Lab" -Content $tableOutput
+        Write-Information $banner -InformationAction Continue
 
         return $results
     }

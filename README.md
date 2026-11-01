@@ -18,7 +18,7 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ## 🚀 The Solution: Sub-5-Second Differencing Resets
 
-`HyperV-LinuxLab` downloads a verified Ubuntu/Debian Cloud VHDX once and locks it read-only. Every lab VM runs on a lightweight **child differencing disk**:
+`HyperV-LinuxLab` downloads verified Linux Cloud base images (Ubuntu 24.04/22.04, Debian 12, or AlmaLinux 9) once and locks them read-only. Every lab VM runs on a lightweight **child differencing disk**:
 - **Disk Footprint**: Only **~50MB to ~200MB** per VM (delta changes only).
 - **Zero-Touch Config**: Cloud-Init automatically configures your username, SSH keys, hostname, and packages on initial boot.
 - **Instant Reset**: `Reset-LabVM` drops the child disk and swaps in a fresh delta in **under 5 seconds**.
