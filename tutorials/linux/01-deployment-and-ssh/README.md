@@ -1,9 +1,8 @@
-# Lab Tutorial 01: Deploying Your Linux Lab & SSH Login (Key & Password)
+﻿# Lab Tutorial 01: Deploying Your Linux Lab & SSH Login (Key & Password)
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** • **Track 1: Hands-On Linux Lab** • [📑 Index](README.md) • [Next: Linux Mental Model & Filesystems →](lab-02-linux-mental-model-and-filesystems.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Linux Lab Track](../README.md)** â€¢ [â† Previous: Tutorials Hub](../../README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 02: Linux Mental Model â†’](../02-linux-mental-model-and-filesystems/README.md)
 
 ---
-
 So, you want to deploy a real, hardware-isolated Linux server on Windows in under 10 seconds, but you don't want the clunkiness of slow ISO installers or heavy third-party virtualization software. 
 
 In this tutorial, we will take you from a blank Windows terminal to a running, hardware-accelerated Linux virtual machine on Hyper-V, and demonstrate logging in using both **SSH Key Authentication** (passwordless) and the **Auto-Generated Lab Passphrase**.
@@ -95,7 +94,7 @@ If your target volume has less than 10 GB of free space, execution halts immedia
 ================================================================================
 ```
 
-*(To understand how storage allocation and differencing disks work under the hood, jump to [Tutorial 04: Virtual Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md)).*
+*(To understand how storage allocation and differencing disks work under the hood, jump to [Tutorial 04: Virtual Storage & Differencing Disks](../../hyperv/04-storage-and-differencing-disks/README.md)).*
 
 ---
 
@@ -223,7 +222,15 @@ labadmin@linux-sandbox:~$
 ---
 
 ### 🧭 Navigation
-| [📑 All Tutorials](README.md) | [Next: Lab Tutorial 02 - Linux Mental Model & Filesystems →](lab-02-linux-mental-model-and-filesystems.md) |
+| [📑 All Tutorials](README.md) | [Next: Lab Tutorial 02 - Linux Mental Model & Filesystems →](../02-linux-mental-model-and-filesystems/README.md) |
 | :--- | :--- |
 
-*(Under the hood: Want to know how the VM, UEFI, and Cloud-Init were built? Read [Hyper-V Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](hyperv-05-vm-architecture-and-cloud-init.md)).*
+*(Under the hood: Want to know how the VM, UEFI, and Cloud-Init were built? Read [Hyper-V Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](../../hyperv/05-vm-architecture-and-cloud-init/README.md)).*
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Tutorials Hub](../../README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 02: Linux Mental Model â†’](../02-linux-mental-model-and-filesystems/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V 05: VM Architecture, UEFI & Cloud-Init](../../hyperv/05-vm-architecture-and-cloud-init/README.md)).*

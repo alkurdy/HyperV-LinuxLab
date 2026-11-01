@@ -1,6 +1,6 @@
-# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
+﻿# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Lab 05: Multi-Distro Clusters](lab-05-multi-distro-clusters.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 02: Installation & Removal â†’](hyperv-02-installation-and-removal.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 02: Installation & Removal â†’](../02-installation-and-removal/README.md)
 
 ---
 So, you want to build a lightning-fast virtualization lab on your Windows machine, but you're not sure if your hardware and Windows setup are ready to handle it. Before we deploy our first Linux node, we need to inspect the bare metal.
@@ -34,7 +34,7 @@ $os = Get-CimInstance -ClassName Win32_OperatingSystem
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Test-LabPrerequisites.ps1`](../Public/Test-LabPrerequisites.ps1) and [`Install-LabHyperV.ps1`](../Public/Install-LabHyperV.ps1) query the `EditionID` registry key. If it detects `Core` or `Home`, it immediately halts execution with an actionable recommendation rather than letting DISM throw a cryptic `0x800f080c` feature-not-found error.
+[`Test-LabPrerequisites.ps1`](../../../Public/Test-LabPrerequisites.ps1) and [`Install-LabHyperV.ps1`](../../../Public/Install-LabHyperV.ps1) query the `EditionID` registry key. If it detects `Core` or `Home`, it immediately halts execution with an actionable recommendation rather than letting DISM throw a cryptic `0x800f080c` feature-not-found error.
 
 ---
 
@@ -87,7 +87,7 @@ if ($isHypervisorRunning) {
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Install-LabHyperV.ps1`](../Public/Install-LabHyperV.ps1) evaluates `Win32_ComputerSystem.HypervisorPresent` first. If `True`, it knows the hypervisor is already initialized and skips the raw processor check.
+[`Install-LabHyperV.ps1`](../../../Public/Install-LabHyperV.ps1) evaluates `Win32_ComputerSystem.HypervisorPresent` first. If `True`, it knows the hypervisor is already initialized and skips the raw processor check.
 
 ---
 
@@ -139,7 +139,7 @@ $drives | Format-Table -AutoSize
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabHostSystemInfo.ps1`](../Private/Get-LabHostSystemInfo.ps1) centralizes these queries across [`Test-LabPrerequisites`](../Public/Test-LabPrerequisites.ps1) and [`Test-LabCluster`](../Public/Test-LabCluster.ps1), dynamically finding your secondary high-capacity drives (like `D:\`) so labs don't crowd your primary OS partition.
+[`Private/Get-LabHostSystemInfo.ps1`](../../../Private/Get-LabHostSystemInfo.ps1) centralizes these queries across [`Test-LabPrerequisites`](../../../Public/Test-LabPrerequisites.ps1) and [`Test-LabCluster`](../../../Public/Test-LabCluster.ps1), dynamically finding your secondary high-capacity drives (like `D:\`) so labs don't crowd your primary OS partition.
 
 ---
 
@@ -204,12 +204,12 @@ $report | Format-List
 ### The Output
 - If `IsAdmin` is `True`, `WindowsEdition` is `Professional`/`Enterprise`, and `TotalMemoryGB` >= `8`, you are ready for the next step.
 
-Now that we've got host prerequisites verified, let's move to **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](hyperv-02-installation-and-removal.md)** to install and configure the hypervisor role.
+Now that we've got host prerequisites verified, let's move to **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](../02-installation-and-removal/README.md)** to install and configure the hypervisor role.
 
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Lab 05: Multi-Distro Clusters](lab-05-multi-distro-clusters.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 02: Installation & Removal â†’](hyperv-02-installation-and-removal.md) |
+| [â† Previous: Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 02: Installation & Removal â†’](../02-installation-and-removal/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 01: Deploying Your Linux Lab & SSH Login](lab-01-deployment-and-ssh.md)).*
+*(Related topic: See [Lab 01: Deploying Your Linux Lab](../../linux/01-deployment-and-ssh/README.md)).*

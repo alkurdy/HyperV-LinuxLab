@@ -1,9 +1,8 @@
-# Lab Tutorial 05: Multi-Distro Heterogeneous Clusters & Coexistence
+﻿# Lab Tutorial 05: Multi-Distro Heterogeneous Clusters & Coexistence
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** • **Track 1: Hands-On Linux Lab** • [← Previous: Snapshots & Disaster Recovery](lab-04-snapshots-and-disaster-recovery.md) • [📑 Index](README.md) • [Next: Hyper-V Hardware Prerequisites →](hyperv-01-prerequisites-and-hardware.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Linux Lab Track](../README.md)** â€¢ [â† Previous: Lab 04: Snapshots & Recovery](../04-snapshots-and-disaster-recovery/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 01: Hardware Prerequisites â†’](../../hyperv/01-prerequisites-and-hardware/README.md)
 
 ---
-
 So, you want to test distributed systems, Ansible playbooks, or Kubernetes clusters across different Linux distributions at the same time? 
 
 In this tutorial, we will deploy a heterogeneous 3-node cluster running **Ubuntu 24.04**, **Debian 12**, and **AlmaLinux 9 (RHEL 9 binary compatible)** side-by-side on the same virtual switch, with automated credential discovery and zero IP conflicts.
@@ -172,7 +171,15 @@ All 3 VMs, their differencing disks, and metadata files are safely removed.
 ---
 
 ### 🧭 Navigation
-| [← Previous: Snapshots & Disaster Recovery](lab-04-snapshots-and-disaster-recovery.md) | [📑 All Tutorials](README.md) | [Next: Hyper-V Systems Engineering Track →](hyperv-01-prerequisites-and-hardware.md) |
+| [← Previous: Snapshots & Disaster Recovery](../04-snapshots-and-disaster-recovery/README.md) | [📑 All Tutorials](README.md) | [Next: Hyper-V Systems Engineering Track →](../../hyperv/01-prerequisites-and-hardware/README.md) |
 | :--- | :---: | ---: |
 
-*(Under the hood: Want to learn how Hyper-V handles multi-node power orchestration and non-blocking telemetry? Read [Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation](hyperv-06-vm-lifecycle-and-telemetry.md)).*
+*(Under the hood: Want to learn how Hyper-V handles multi-node power orchestration and non-blocking telemetry? Read [Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation](../../hyperv/06-vm-lifecycle-and-telemetry/README.md)).*
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Lab 04: Snapshots & Recovery](../04-snapshots-and-disaster-recovery/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 01: Hardware Prerequisites â†’](../../hyperv/01-prerequisites-and-hardware/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V 06: Lifecycle & Telemetry](../../hyperv/06-vm-lifecycle-and-telemetry/README.md)).*

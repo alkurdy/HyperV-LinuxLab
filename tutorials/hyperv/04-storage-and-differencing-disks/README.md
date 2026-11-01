@@ -1,6 +1,6 @@
 ﻿# Hyper-V Tutorial 04: Virtual Storage & Differencing Disks
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 03: Virtual Networking](hyperv-03-virtual-networking.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](hyperv-05-vm-architecture-and-cloud-init.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](../05-vm-architecture-and-cloud-init/README.md)
 
 ---
 Now that our virtual network and IP discovery are solid, let's look at storage. So you want to spin up a 3-node Kubernetes cluster or multi-distro testbed, but you don't want to burn 60 GB of disk space or wait 15 minutes for full disk clones—how do we spin up fresh VMs in seconds using almost no space?
@@ -71,7 +71,7 @@ Write-Host "[OK] Base image marked Read-Only. Parent is safe from child corrupti
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`New-LabBaseImage.ps1`](../Public/New-LabBaseImage.ps1) sets `IsReadOnly = $true` immediately after verifying the upstream image's SHA256 checksum and completing dynamic VHDX conversion.
+[`New-LabBaseImage.ps1`](../../../Public/New-LabBaseImage.ps1) sets `IsReadOnly = $true` immediately after verifying the upstream image's SHA256 checksum and completing dynamic VHDX conversion.
 
 ---
 
@@ -131,7 +131,7 @@ Write-Host "[OK] VM '$vmName' reset to factory state in ~3 seconds!"
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-This exact sequence is encapsulated in [`Reset-LabVM.ps1`](../Public/Reset-LabVM.ps1), supporting single VMs or pipelined wildcard cluster resets (`Get-LabVM "k8s-*" | Reset-LabVM -Force`).
+This exact sequence is encapsulated in [`Reset-LabVM.ps1`](../../../Public/Reset-LabVM.ps1), supporting single VMs or pipelined wildcard cluster resets (`Get-LabVM "k8s-*" | Reset-LabVM -Force`).
 
 ---
 
@@ -180,16 +180,16 @@ if ($freeGB -lt 10.0) {
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Private/Assert-LabDiskSpace.ps1`](../Private/Assert-LabDiskSpace.ps1) acts as an automated safety gate. If free space is below the required threshold, it prints a high-visibility terminal banner and blocks provisioning unless `-Force` is passed.
+[`Private/Assert-LabDiskSpace.ps1`](../../../Private/Assert-LabDiskSpace.ps1) acts as an automated safety gate. If free space is below the required threshold, it prints a high-visibility terminal banner and blocks provisioning unless `-Force` is passed.
 
 ---
 
-Now that our storage and differencing disk architecture is clear, let's explore **[Tutorial 05: VM Architecture, UEFI Gen2 & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md)** to see how VMs initialize without interactive installers!
+Now that our storage and differencing disk architecture is clear, let's explore **[Tutorial 05: VM Architecture, UEFI Gen2 & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md)** to see how VMs initialize without interactive installers!
 
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 03: Virtual Networking](hyperv-03-virtual-networking.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](hyperv-05-vm-architecture-and-cloud-init.md) |
+| [â† Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](../05-vm-architecture-and-cloud-init/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 04: Snapshots & Disaster Recovery](lab-04-snapshots-and-disaster-recovery.md)).*
+*(Related topic: See [Lab 04: Snapshots & Disaster Recovery](../../linux/04-snapshots-and-disaster-recovery/README.md)).*

@@ -1,6 +1,6 @@
 ﻿# Hyper-V Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 04: Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 06: Lifecycle & Telemetry â†’](hyperv-06-vm-lifecycle-and-telemetry.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 04: Storage & Differencing Disks](../04-storage-and-differencing-disks/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 06: Lifecycle & Telemetry â†’](../06-vm-lifecycle-and-telemetry/README.md)
 
 ---
 Now that our storage and differencing disk architecture is clear, let's look at the virtual machine itself. So you want to boot a Linux VM without sitting through an interactive installer wizard, clicking "Next", selecting timezones, and creating user accounts—how does Hyper-V provision a fully configured, production-ready Linux node in under 10 seconds?
@@ -55,7 +55,7 @@ Hyper-V\Set-VMFirmware -VMName "linux-node-01" `
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`New-LabVM.ps1`](../Public/New-LabVM.ps1) executes this command on every provisioned VM, ensuring modern Linux distros boot securely without turning off hardware verification.
+[`New-LabVM.ps1`](../../../Public/New-LabVM.ps1) executes this command on every provisioned VM, ensuring modern Linux distros boot securely without turning off hardware verification.
 
 ---
 
@@ -131,7 +131,7 @@ Hyper-V\Add-VMDvdDrive -VMName "linux-node-01" -Path "C:\HyperV-LinuxLab\LabVMs\
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Public/New-LabCloudInitISO.ps1`](../Public/New-LabCloudInitISO.ps1) and [`Private/New-ISO9660Image.ps1`](../Private/New-ISO9660Image.ps1) construct standard ISO 9660 filesystems natively in pure PowerShell memory without requiring third-party tools like `mkisofs` or `genisoimage`!
+[`Public/New-LabCloudInitISO.ps1`](../../../Public/New-LabCloudInitISO.ps1) and [`Private/New-ISO9660Image.ps1`](../../../Private/New-ISO9660Image.ps1) construct standard ISO 9660 filesystems natively in pure PowerShell memory without requiring third-party tools like `mkisofs` or `genisoimage`!
 
 ---
 
@@ -192,12 +192,12 @@ Write-Host "[OK] Gen2 VM '$vmName' successfully booted with Cloud-Init NoCloud c
 
 ---
 
-Now that our VM is running and provisioned, let's explore **[Tutorial 06: VM Lifecycle, Telemetry & Automation](hyperv-06-vm-lifecycle-and-telemetry.md)** to see how we monitor and automate our lab environment!
+Now that our VM is running and provisioned, let's explore **[Tutorial 06: VM Lifecycle, Telemetry & Automation](../06-vm-lifecycle-and-telemetry/README.md)** to see how we monitor and automate our lab environment!
 
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 04: Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 06: Lifecycle & Telemetry â†’](hyperv-06-vm-lifecycle-and-telemetry.md) |
+| [â† Previous: Hyper-V 04: Storage & Differencing Disks](../04-storage-and-differencing-disks/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 06: Lifecycle & Telemetry â†’](../06-vm-lifecycle-and-telemetry/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 01: Deploying Your Linux Lab](lab-01-deployment-and-ssh.md)).*
+*(Related topic: See [Lab 01: Deploying Your Linux Lab](../../linux/01-deployment-and-ssh/README.md)).*

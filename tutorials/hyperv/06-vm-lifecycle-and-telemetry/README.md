@@ -1,6 +1,6 @@
 ﻿# Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Lab Track 01: Deploying Your Linux Lab â†’](lab-01-deployment-and-ssh.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 01: Deploying Your Linux Lab â†’](../../linux/01-deployment-and-ssh/README.md)
 
 ---
 Now that our VM is running and provisioned, let's look at day-2 operations. So you want to manage multiple running VMs, recall their dynamic IP addresses and passphrases, monitor resource consumption, and automate cluster startups without clicking through the Hyper-V GUI—how do we automate the complete lifecycle from the command line?
@@ -80,7 +80,7 @@ while ($stopwatch.Elapsed.TotalSeconds -lt $timeoutSeconds) {
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Start-LabVM.ps1`](../Public/Start-LabVM.ps1) and [`New-LabVM.ps1`](../Public/New-LabVM.ps1) run this TCP probe when `-Wait` or `-Start` is specified, ensuring the ASCII connection banner only prints when the VM is genuinely reachable.
+[`Start-LabVM.ps1`](../../../Public/Start-LabVM.ps1) and [`New-LabVM.ps1`](../../../Public/New-LabVM.ps1) run this TCP probe when `-Wait` or `-Start` is specified, ensuring the ASCII connection banner only prints when the VM is genuinely reachable.
 
 ---
 
@@ -115,7 +115,7 @@ Hyper-V\Set-VM -Name $vmName -Notes $notes
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Private/Set-LabVMMetadata.ps1`](../Private/Set-LabVMMetadata.ps1) and [`Private/Get-LabVMMetadata.ps1`](../Private/Get-LabVMMetadata.ps1) handle dual-writing and retrieval, powering [`Get-LabVM`](../Public/Get-LabVM.ps1).
+[`Private/Set-LabVMMetadata.ps1`](../../../Private/Set-LabVMMetadata.ps1) and [`Private/Get-LabVMMetadata.ps1`](../../../Private/Get-LabVMMetadata.ps1) handle dual-writing and retrieval, powering [`Get-LabVM`](../../../Public/Get-LabVM.ps1).
 
 ---
 
@@ -142,7 +142,7 @@ Hyper-V\Set-VM -Name "linux-node-01" `
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Enable-LabAutoStart.ps1`](../Public/Enable-LabAutoStart.ps1) and [`Disable-LabAutoStart.ps1`](../Public/Disable-LabAutoStart.ps1) let you choose `-Mode HyperV`, `-Mode ScheduledTask`, or `-Mode Both`.
+[`Enable-LabAutoStart.ps1`](../../../Public/Enable-LabAutoStart.ps1) and [`Disable-LabAutoStart.ps1`](../../../Public/Disable-LabAutoStart.ps1) let you choose `-Mode HyperV`, `-Mode ScheduledTask`, or `-Mode Both`.
 
 ---
 
@@ -171,7 +171,7 @@ Rather than running manual provisioning commands for every node, declare your cl
 3. **Staged Provisioning**: Provision nodes, applying toolchain packages and Cloud-Init configurations sequentially.
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Test-LabCluster.ps1`](../Public/Test-LabCluster.ps1) and [`New-LabCluster.ps1`](../Public/New-LabCluster.ps1) parse this JSON, automatically enforce host resource boundaries, and spin up multi-node environments in seconds.
+[`Test-LabCluster.ps1`](../../../Public/Test-LabCluster.ps1) and [`New-LabCluster.ps1`](../../../Public/New-LabCluster.ps1) parse this JSON, automatically enforce host resource boundaries, and spin up multi-node environments in seconds.
 
 ---
 
@@ -248,7 +248,7 @@ Armed with this knowledge, you can use the high-level cmdlets in **`HyperV-Linux
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Lab Track 01: Deploying Your Linux Lab â†’](lab-01-deployment-and-ssh.md) |
+| [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 01: Deploying Your Linux Lab â†’](../../linux/01-deployment-and-ssh/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 05: Multi-Distro Clusters](lab-05-multi-distro-clusters.md)).*
+*(Related topic: See [Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md)).*

@@ -1,6 +1,6 @@
-# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
+﻿# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 02: Installation & Removal](hyperv-02-installation-and-removal.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 04: Storage & Differencing Disks â†’](hyperv-04-storage-and-differencing-disks.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 04: Storage & Differencing Disks â†’](../04-storage-and-differencing-disks/README.md)
 
 ---
 Now that we've got Hyper-V installed, verified, and operational, let's look at virtual networking. So you want your Linux VMs to talk to each other, fetch apt packages from the internet, and let you SSH into them from Windows Terminal—how does Hyper-V route those packets?
@@ -66,7 +66,7 @@ New-NetNat -Name "LabNAT" -InternalIPInterfaceAddressPrefix "192.168.100.0/24"
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabDefaultSwitch.ps1`](../Private/Get-LabDefaultSwitch.ps1) automatically resolves your active virtual switch. If you don't specify a custom switch name, it safely binds to the native `Default Switch`.
+[`Private/Get-LabDefaultSwitch.ps1`](../../../Private/Get-LabDefaultSwitch.ps1) automatically resolves your active virtual switch. If you don't specify a custom switch name, it safely binds to the native `Default Switch`.
 
 ---
 
@@ -133,7 +133,7 @@ Write-Host "Discovered Guest IPv4: $ipv4"
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabVMIPAddress.ps1`](../Private/Get-LabVMIPAddress.ps1) encapsulates this logic with stopwatch polling, waiting up to 45 seconds for cloud-init to finish bringing up the network before presenting your ready-to-use SSH connection string.
+[`Private/Get-LabVMIPAddress.ps1`](../../../Private/Get-LabVMIPAddress.ps1) encapsulates this logic with stopwatch polling, waiting up to 45 seconds for cloud-init to finish bringing up the network before presenting your ready-to-use SSH connection string.
 
 ---
 
@@ -182,12 +182,12 @@ Now, what happens when a VM gets stuck with an APIPA (`169.254.x.x`) address, or
 
 ---
 
-Now that our virtual network and IP discovery are solid, let's explore **[Tutorial 04: Virtual Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md)** to see how we achieve sub-5-second VM resets!
+Now that our virtual network and IP discovery are solid, let's explore **[Tutorial 04: Virtual Storage & Differencing Disks](../04-storage-and-differencing-disks/README.md)** to see how we achieve sub-5-second VM resets!
 
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 02: Installation & Removal](hyperv-02-installation-and-removal.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 04: Storage & Differencing Disks â†’](hyperv-04-storage-and-differencing-disks.md) |
+| [â† Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 04: Storage & Differencing Disks â†’](../04-storage-and-differencing-disks/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 03: Linux Networking & Diagnostics](lab-03-processes-systemd-and-networking.md)).*
+*(Related topic: See [Lab 03: Linux Networking & Diagnostics](../../linux/03-processes-systemd-and-networking/README.md)).*

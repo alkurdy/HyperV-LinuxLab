@@ -1,9 +1,8 @@
-# Lab Tutorial 02: Linux Operating System Mental Model & Filesystem Hierarchy
+﻿# Lab Tutorial 02: Linux Operating System Mental Model & Filesystem Hierarchy
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** • **Track 1: Hands-On Linux Lab** • [← Previous: Lab Deployment & SSH](lab-01-deployment-and-ssh.md) • [📑 Index](README.md) • [Next: Processes, Services & Networking →](lab-03-processes-systemd-and-networking.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Linux Lab Track](../README.md)** â€¢ [â† Previous: Lab 01: Deployment & SSH](../01-deployment-and-ssh/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 03: Processes & Networking â†’](../03-processes-systemd-and-networking/README.md)
 
 ---
-
 Now that you are logged into your Linux prompt (`labadmin@linux-sandbox:~$`), let's demystify how Linux actually operates under the hood so you can troubleshoot systems, debug containers, and administer Kubernetes with confidence.
 
 Unlike Windows, where GUI subsystems, registries, and DLLs are deeply interwoven, Linux is built on a clear, layered hierarchy governed by one fundamental axiom: **Everything is a file.**
@@ -194,7 +193,15 @@ A summary table of system calls executed:
 ---
 
 ### 🧭 Navigation
-| [← Previous: Lab Deployment & SSH](lab-01-deployment-and-ssh.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 03 - Processes, Services & Networking →](lab-03-processes-systemd-and-networking.md) |
+| [← Previous: Lab Deployment & SSH](../01-deployment-and-ssh/README.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 03 - Processes, Services & Networking →](../03-processes-systemd-and-networking/README.md) |
 | :--- | :---: | ---: |
 
-*(Under the hood: Want to learn how Hyper-V allocates and connects virtual SCSI disks? Read [Hyper-V Tutorial 04: Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md)).*
+*(Under the hood: Want to learn how Hyper-V allocates and connects virtual SCSI disks? Read [Hyper-V Tutorial 04: Storage & Differencing Disks](../../hyperv/04-storage-and-differencing-disks/README.md)).*
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Lab 01: Deployment & SSH](../01-deployment-and-ssh/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 03: Processes & Networking â†’](../03-processes-systemd-and-networking/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V 04: Storage & Differencing Disks](../../hyperv/04-storage-and-differencing-disks/README.md)).*

@@ -213,29 +213,31 @@ Available distributions in `New-LabBaseImage`:
   - `Tests/Public/New-LabVM.Tests.ps1`, `Tests/Public/Get-LabVM.Tests.ps1`, `Tests/Public/Cluster.Tests.ps1`: Added unit tests for multi-distro standup and metadata inspection.
 - **Pester Results**: 98 tests total (up from 90), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
 
-### [2026-10-31T23:51:00-04:00] PHASE 12: Tutorials Hub Standardization, Interactive Navigation & PowerShell Module Qualification
-- **Files Created**:
-  - `tutorials/lab-01-deployment-and-ssh.md`: Lab 01 hands-on deployment, Scream test, key/passphrase login.
-  - `tutorials/lab-02-linux-mental-model-and-filesystems.md`: Lab 02 Linux mental model, `/proc`/`/sys`, permissions, `strace`.
-  - `tutorials/lab-03-processes-systemd-and-networking.md`: Lab 03 PID 1 ancestry, `systemctl`, `journalctl`, pipes, `iproute2`.
-  - `tutorials/lab-04-snapshots-and-disaster-recovery.md`: Lab 04 break-fix drills, 2s snapshot rollback, 3s differencing reset.
-  - `tutorials/lab-05-multi-distro-clusters.md`: Lab 05 heterogeneous multi-distro cluster coexistence, `sudo` vs `wheel`.
-  - `tutorials/hyperv-01-prerequisites-and-hardware.md`: Hyper-V 01 silicon, SKU gating, WHVP, module qualification.
-  - `tutorials/hyperv-02-installation-and-removal.md`: Hyper-V 02 DISM features, clean removal, CBS log debugging.
-  - `tutorials/hyperv-03-virtual-networking.md`: Hyper-V 03 WinNAT, vSwitches, VMBus, module qualification callout.
-  - `tutorials/hyperv-04-storage-and-differencing-disks.md`: Hyper-V 04 VHDX blocks, pointer chains, Scream test.
-  - `tutorials/hyperv-05-vm-architecture-and-cloud-init.md`: Hyper-V 05 Gen2 UEFI, Secure Boot CA, NoCloud ISO9660.
-  - `tutorials/hyperv-06-vm-lifecycle-and-telemetry.md`: Hyper-V 06 native power states, non-blocking telemetry, metadata.
+### [2026-10-31T23:56:00-04:00] PHASE 12: Tutorials Hub Directory Hierarchy, Interactive Navigation & PowerShell Module Qualification
+- **Directory Structure Created**:
+  - `tutorials/linux/` (Track 1 Hub)
+    - `01-deployment-and-ssh/README.md`
+    - `02-linux-mental-model-and-filesystems/README.md`
+    - `03-processes-systemd-and-networking/README.md`
+    - `04-snapshots-and-disaster-recovery/README.md`
+    - `05-multi-distro-clusters/README.md`
+  - `tutorials/hyperv/` (Track 2 Hub)
+    - `01-prerequisites-and-hardware/README.md`
+    - `02-installation-and-removal/README.md`
+    - `03-virtual-networking/README.md`
+    - `04-storage-and-differencing-disks/README.md`
+    - `05-vm-architecture-and-cloud-init/README.md`
+    - `06-vm-lifecycle-and-telemetry/README.md`
+  - `tutorials/README.md`: Master curriculum index and concept quick-jump matrix.
 - **Files Removed**:
-  - `docs/01_DEPLOYMENT_AND_SSH_LOGIN.md`, `docs/02_LINUX_ESSENTIALS_OVERVIEW.md`, `docs/TUTORIAL_LEARNING_LINUX.md` (consolidated into `tutorials/`).
-  - `tutorials/01-prerequisites-and-hardware.md` through `tutorials/06-vm-lifecycle-and-telemetry.md` (renamed with standardized `hyperv-` prefix).
+  - Flat markdown files in `tutorials/` and legacy drafts in `docs/` migrated into dedicated directories.
 - **Files Modified**:
-  - `tutorials/README.md`: Built comprehensive curriculum hub with interactive quick-jump matrix, visual tracks, and reading guidance.
-  - `README.md`: Updated tutorial index links to new track structure.
+  - `README.md`: Updated tutorial index links to directory paths.
   - `docs/SPECIFICATION.md`: Added Section 3.5 documenting PowerShell Module Qualification & Collision Defense (`Hyper-V\<Cmdlet>`).
 - **Summary**:
-  - Consolidated all repository tutorials into a unified `tutorials/` hub with two distinct tracks (Track 1: Hands-On Linux Lab, Track 2: Hyper-V Systems Engineering).
-  - Added top and bottom navigation bars across all 11 tutorials for seamless reading on GitHub.
+  - Restructured all 11 tutorials into dedicated directories with auto-rendering `README.md` on GitHub.
+  - Provided track-level hubs (`tutorials/linux/README.md`, `tutorials/hyperv/README.md`) and a master hub (`tutorials/README.md`).
+  - Added bidirectional navigation headers and cross-track reference links.
   - Documented PowerShell Module Qualification (`Hyper-V\New-VMSwitch`, `Hyper-V\Get-VM`) across tutorials and specification to explain collision prevention with third-party tools like VMware PowerCLI.
   - 100% internal markdown links verified, zero machine-specific paths committed.
 - **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.

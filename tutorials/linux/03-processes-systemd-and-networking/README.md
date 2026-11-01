@@ -1,9 +1,8 @@
-# Lab Tutorial 03: Linux Processes, Systemd Services & Modern Networking
+﻿# Lab Tutorial 03: Linux Processes, Systemd Services & Modern Networking
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** • **Track 1: Hands-On Linux Lab** • [← Previous: Linux Mental Model](lab-02-linux-mental-model-and-filesystems.md) • [📑 Index](README.md) • [Next: Snapshots & Disaster Recovery →](lab-04-snapshots-and-disaster-recovery.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Linux Lab Track](../README.md)** â€¢ [â† Previous: Lab 02: Linux Mental Model](../02-linux-mental-model-and-filesystems/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 04: Snapshots & Recovery â†’](../04-snapshots-and-disaster-recovery/README.md)
 
 ---
-
 So, you want to manage background daemons, inspect live resource hogs, stream production system logs, and debug network sockets like a seasoned systems engineer?
 
 In this tutorial, we will take control of user-space execution. We will inspect PID 1, manage services with `systemd`, harness Unix text pipes, and master modern `iproute2` networking diagnostics.
@@ -195,7 +194,15 @@ curl -I https://ubuntu.com
 ---
 
 ### 🧭 Navigation
-| [← Previous: Linux Mental Model](lab-02-linux-mental-model-and-filesystems.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 04 - Snapshots & Disaster Recovery →](lab-04-snapshots-and-disaster-recovery.md) |
+| [← Previous: Linux Mental Model](../02-linux-mental-model-and-filesystems/README.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 04 - Snapshots & Disaster Recovery →](../04-snapshots-and-disaster-recovery/README.md) |
 | :--- | :---: | ---: |
 
-*(Under the hood: Want to know how Windows handles virtual NAT switches and packet routing? Read [Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing](hyperv-03-virtual-networking.md)).*
+*(Under the hood: Want to know how Windows handles virtual NAT switches and packet routing? Read [Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing](../../hyperv/03-virtual-networking/README.md)).*
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Lab 02: Linux Mental Model](../02-linux-mental-model-and-filesystems/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 04: Snapshots & Recovery â†’](../04-snapshots-and-disaster-recovery/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V 03: Virtual Networking](../../hyperv/03-virtual-networking/README.md)).*

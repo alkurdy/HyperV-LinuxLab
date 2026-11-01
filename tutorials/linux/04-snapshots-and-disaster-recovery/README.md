@@ -1,9 +1,8 @@
-# Lab Tutorial 04: Snapshots, Break-Fix Drills & Instant Disaster Recovery
+﻿# Lab Tutorial 04: Snapshots, Break-Fix Drills & Instant Disaster Recovery
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** • **Track 1: Hands-On Linux Lab** • [← Previous: Processes & Networking](lab-03-processes-systemd-and-networking.md) • [📑 Index](README.md) • [Next: Multi-Distro Clusters →](lab-05-multi-distro-clusters.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Linux Lab Track](../README.md)** â€¢ [â† Previous: Lab 03: Processes & Networking](../03-processes-systemd-and-networking/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 05: Multi-Distro Clusters â†’](../05-multi-distro-clusters/README.md)
 
 ---
-
 Now that we've got our Linux system running and mastered the basics, **let's break things on purpose.**
 
 In physical environments or slow clouds, breaking an operating system means a 30-minute reinstallation ordeal. In `HyperV-LinuxLab`, because every VM runs on a child differencing VHDX attached to a read-only golden master, you can execute catastrophic commands fearlessly and recover in **2 to 3 seconds**.
@@ -149,7 +148,15 @@ All differencing disks, metadata logs, and temporary virtual ISOs are completely
 ---
 
 ### 🧭 Navigation
-| [← Previous: Processes & Networking](lab-03-processes-systemd-and-networking.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 05 - Multi-Distro Clusters →](lab-05-multi-distro-clusters.md) |
+| [← Previous: Processes & Networking](../03-processes-systemd-and-networking/README.md) | [📑 All Tutorials](README.md) | [Next: Lab Tutorial 05 - Multi-Distro Clusters →](../05-multi-distro-clusters/README.md) |
 | :--- | :---: | ---: |
 
-*(Under the hood: Want to see the VHDX block allocation tables and parent-child pointer chains? Read [Hyper-V Tutorial 04: Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md)).*
+*(Under the hood: Want to see the VHDX block allocation tables and parent-child pointer chains? Read [Hyper-V Tutorial 04: Storage & Differencing Disks](../../hyperv/04-storage-and-differencing-disks/README.md)).*
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Lab 03: Processes & Networking](../03-processes-systemd-and-networking/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 05: Multi-Distro Clusters â†’](../05-multi-distro-clusters/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V 04: Storage & Differencing Disks](../../hyperv/04-storage-and-differencing-disks/README.md)).*

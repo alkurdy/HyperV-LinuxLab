@@ -1,6 +1,6 @@
 ﻿# Hyper-V Tutorial 02: Hyper-V Installation, Reboot Lifecycle & Clean Removal
 
-> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 01: Prerequisites & Hardware](hyperv-01-prerequisites-and-hardware.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 03: Virtual Networking â†’](hyperv-03-virtual-networking.md)
+> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 03: Virtual Networking â†’](../03-virtual-networking/README.md)
 
 ---
 Now that we've got host prerequisites verified, let's look at installing the Hyper-V role—and just as importantly, how to cleanly remove it when you want to start fresh or troubleshoot a broken state.
@@ -51,7 +51,7 @@ Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRest
 By passing `-NoRestart`, DISM stages the drivers and servicing packages into the Windows Component Store without immediately forcing a hard reboot, allowing scripts to inspect the result object (`RestartNeeded: True`).
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Install-LabHyperV.ps1`](../Public/Install-LabHyperV.ps1) executes this exact DISM command after validating hardware virtualization and Windows SKU compatibility.
+[`Install-LabHyperV.ps1`](../../../Public/Install-LabHyperV.ps1) executes this exact DISM command after validating hardware virtualization and Windows SKU compatibility.
 
 ---
 
@@ -80,7 +80,7 @@ Write-Host "Reboot Required: $pending (CBS: $cbsReboot, WindowsUpdate: $wuReboot
 ```
 
 ### Under the Hood in `HyperV-LinuxLab`
-[`Test-LabPrerequisites.ps1`](../Public/Test-LabPrerequisites.ps1) inspects these registry keys. If a reboot is pending, it sets `PendingReboot: True` and prompts you to restart rather than attempting to launch VMs and crashing.
+[`Test-LabPrerequisites.ps1`](../../../Public/Test-LabPrerequisites.ps1) inspects these registry keys. If a reboot is pending, it sets `PendingReboot: True` and prompts you to restart rather than attempting to launch VMs and crashing.
 
 ---
 
@@ -180,12 +180,12 @@ Get-Content -Path "C:\Windows\Logs\CBS\CBS.log" -Tail 50 | Select-String "Error"
 
 ---
 
-Now that we've got Hyper-V installed, verified, and operational, let's explore **[Tutorial 03: Virtual Networking & Guest IP Routing](hyperv-03-virtual-networking.md)** to see how VMs get network connectivity.
+Now that we've got Hyper-V installed, verified, and operational, let's explore **[Tutorial 03: Virtual Networking & Guest IP Routing](../03-virtual-networking/README.md)** to see how VMs get network connectivity.
 
 ---
 
 ### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 01: Prerequisites & Hardware](hyperv-01-prerequisites-and-hardware.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 03: Virtual Networking â†’](hyperv-03-virtual-networking.md) |
+| [â† Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 03: Virtual Networking â†’](../03-virtual-networking/README.md) |
 | :--- | :---: | ---: |
 
-*(Hands-on lab drill: See [Lab Tutorial 01: Deploying Your Linux Lab](lab-01-deployment-and-ssh.md)).*
+*(Related topic: See [Lab 01: Deploying Your Linux Lab](../../linux/01-deployment-and-ssh/README.md)).*
