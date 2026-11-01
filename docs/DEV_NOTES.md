@@ -1,15 +1,67 @@
 # HyperV-LinuxLab Development & Refactoring Notes
 
 *Created: 2026-10-31T21:58:30-04:00*
-*Last Updated: 2026-10-31T23:18:00-04:00*
+*Last Updated: 2026-10-31T23:25:00-04:00*
 
 ## Index
 
+- [0. Next Session Priority: End-to-End Hyper-V Role Lifecycle Validation](#0-next-session-priority-end-to-end-hyper-v-role-lifecycle-validation)
 - [1. Active Sprint Backlog](#1-active-sprint-backlog)
 - [2. Architectural & DRY Tracking](#2-architectural--dry-tracking)
 - [3. Linux Distro Expansion Catalog](#3-linux-distro-expansion-catalog)
 - [4. Documentation & Secondary Updates Backlog](#4-documentation--secondary-updates-backlog)
 - [5. Completed & Archived Work Log](#5-completed--archived-work-log)
+
+---
+
+## 0. Next Session Priority: End-to-End Hyper-V Role Lifecycle Validation
+
+**Goal**: Validate complete uninstallation of Hyper-V from host, reboot, and reinstallation via `Install-LabHyperV` to verify real-world hardware virtualization check, DISM provisioning, reboot detection, and lab bringup.
+
+### Validation Runbook:
+
+```powershell
+# 1. Baseline Pre-Flight (Elevated PowerShell 7 or 5.1)
+Import-Module .\HyperV-LinuxLab.psd1 -Force
+Test-LabPrerequisites -Detailed
+
+# 2. Uninstall Hyper-V Role (Simulate clean host machine)
+# NOTE: Host will prompt or require restart
+Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
+Restart-Computer
+
+# 3. Post-Uninstall Verification (After Reboot)
+Import-Module .\HyperV-LinuxLab.psd1 -Force
+$pre = Test-LabPrerequisites -Detailed
+# Expected:
+#   $pre.Status == 'Failed'
+#   $pre.HyperVModule == $false
+#   Recommendation recommends running Install-LabHyperV
+
+# 4. Execute Role Installation via Lab Tool
+Install-LabHyperV -Restart
+# Expected:
+#   - Validates firmware VT-x/AMD-V
+#   - Validates Windows Edition (Pro/Enterprise/Server)
+#   - Checks third-party hypervisors (VirtualBox, VMware)
+#   - Enables Microsoft-Hyper-V-All feature
+#   - Detects pending reboot state and reboots computer
+
+# 5. Post-Reinstall Verification (After Reboot)
+Import-Module .\HyperV-LinuxLab.psd1 -Force
+Test-LabPrerequisites -Detailed
+# Expected: Status == 'Ready'
+
+# 6. End-to-End Lab Deployment Test
+# Spin up 3-node heterogeneous cluster (Ubuntu + Debian + AlmaLinux)
+New-LabCluster -Path .\examples\multi-distro-cluster.json
+
+# Verify metadata and credentials recall
+Get-LabVM
+
+# Teardown
+Remove-LabCluster -Path .\examples\multi-distro-cluster.json -Force
+```
 
 ---
 
