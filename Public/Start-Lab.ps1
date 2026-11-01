@@ -74,11 +74,18 @@ function Start-Lab {
                     $ip = Get-LabVMIPAddress -VMName $vmName -TimeoutSeconds 0
                 }
 
+                $meta = Get-LabVMMetadata -VMName $vmName
+                $user = if ($meta.Username) { $meta.Username } else { "labadmin" }
+                if ($ip) {
+                    Set-LabVMMetadata -VMName $vmName -IPv4 $ip | Out-Null
+                }
+
                 $results += [PSCustomObject]@{
-                    Name  = $vmName
-                    State = "Running"
-                    IPv4  = $ip
-                    SSH   = if ($ip) { "ssh labadmin@$ip" } else { "" }
+                    Name   = $vmName
+                    Distro = $meta.Distro
+                    State  = "Running"
+                    IPv4   = $ip
+                    SSH    = if ($ip) { "ssh $user@$ip" } else { "" }
                 }
             }
         }
@@ -91,7 +98,7 @@ function Start-Lab {
             ""
         }
 
-        $tableOutput = ($results | Format-Table Name, State, IPv4, SSH | Out-String).Trim()
+        $tableOutput = ($results | Format-Table Name, Distro, State, IPv4, SSH | Out-String).Trim()
         $banner = Format-LabBanner -Title "[LAB READY] Hyper-V Linux Lab ($($results.Count) Nodes)" -Content "$tableOutput$sshListing"
         Write-Information $banner -InformationAction Continue
 

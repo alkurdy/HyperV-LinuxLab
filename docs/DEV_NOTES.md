@@ -1,7 +1,7 @@
 # HyperV-LinuxLab Development & Refactoring Notes
 
 *Created: 2026-10-31T21:58:30-04:00*
-*Last Updated: 2026-10-31T22:35:30-04:00*
+*Last Updated: 2026-10-31T23:18:00-04:00*
 
 ## Index
 
@@ -15,6 +15,7 @@
 
 ## 1. Active Sprint Backlog
 
+- [x] **[PHASE-10] Multi-Distro Coexistence & Local VM Metadata Persistence** *(Archived: 2026-10-31T23:18:00-04:00)*
 - [x] **[PHASE-9] Hyper-V Role Lifecycle & Automated Provisioning (`Install-LabHyperV.ps1`)** *(Archived: 2026-10-31T22:35:00-04:00)*
 
 ---
@@ -28,6 +29,7 @@
 | Credential conversions | **Refactored** | Extracted `ConvertTo-LabSecureString` and `ConvertFrom-LabSecureString` in `Private\Convert-LabSecureString.ps1`. |
 | Cluster node name resolving | **Refactored** | Centralized in `Private\Get-LabClusterNodeName.ps1`. Removed duplicate prefixing logic from `Get-LabTargetVM`, `New-LabCluster`, `Remove-LabCluster`, and `Test-LabCluster`. |
 | Terminal banner formatting | **Refactored** | Centralized in `Private\Format-LabBanner.ps1`. Removed redundant ASCII box string literals across 7 cmdlets. |
+| VM metadata & recall | **Refactored** | Centralized in `Private\Set-LabVMMetadata.ps1` and `Private\Get-LabVMMetadata.ps1`. Dual-write to `<LabStoragePath>\LabVMs\<name>\metadata.json` and Hyper-V VM Notes. |
 
 ---
 
@@ -118,3 +120,20 @@ Available distributions in `New-LabBaseImage`:
   - Updated `Test-LabPrerequisites` with `PendingReboot` detection and guidance.
   - Exported `Install-LabHyperV` in module manifest (28 public cmdlets).
 - **Pester Results**: 90 tests total (up from 84), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-10-31T23:18:00-04:00] PHASE 10: Multi-Distro Coexistence & Local VM Metadata Persistence
+- **Files Created**:
+  - `Private/Set-LabVMMetadata.ps1`: Dual-write metadata persistence (`metadata.json` + Hyper-V Notes).
+  - `Private/Get-LabVMMetadata.ps1`: Metadata retrieval with fallback parsing from Hyper-V Notes.
+  - `Tests/Private/Set-LabVMMetadata.Tests.ps1`: Unit tests for setting and updating VM metadata.
+  - `Tests/Private/Get-LabVMMetadata.Tests.ps1`: Unit tests for reading metadata from disk and Hyper-V Notes.
+  - `examples/multi-distro-cluster.json`: Declarative topology demonstrating Ubuntu 24.04, Debian 12, and AlmaLinux 9 coexisting on the same virtual switch.
+- **Files Modified**:
+  - `Public/New-LabCloudInitISO.ps1`: Added `wheel` group alongside `sudo` in cloud-config to ensure instant root sudo access across Debian, Ubuntu, and AlmaLinux/RHEL guests.
+  - `Public/New-LabVM.ps1`: Added `-Distro` parameter (aliased to `BaseImage`), auto-download per requested distro, and metadata persistence.
+  - `Public/New-LabCluster.ps1`: Implemented heterogeneous multi-distro cluster provisioning with per-node `Distro` overrides.
+  - `Public/Test-LabCluster.ps1`: Added catalog validation for distro definitions across cluster nodes.
+  - `Public/Get-LabVM.ps1`: Surfaced `Distro`, `Username`, `Password`, and `SSH` connection string in output object.
+  - `Public/Start-LabVM.ps1` & `Public/Start-Lab.ps1`: Integrated metadata update on dynamic IP acquisition.
+  - `Tests/Public/New-LabVM.Tests.ps1`, `Tests/Public/Get-LabVM.Tests.ps1`, `Tests/Public/Cluster.Tests.ps1`: Added unit tests for multi-distro standup and metadata inspection.
+- **Pester Results**: 98 tests total (up from 90), 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.

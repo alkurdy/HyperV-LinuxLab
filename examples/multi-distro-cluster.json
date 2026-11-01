@@ -1,0 +1,31 @@
+{
+  "ClusterName": "polyglot-lab",
+  "Description": "Heterogeneous multi-distro testbed running Ubuntu, Debian, and AlmaLinux side-by-side",
+  "SwitchName": "Default Switch",
+  "Nodes": [
+    {
+      "Name": "u24-node",
+      "Distro": "Ubuntu2404",
+      "Role": "WebFrontend",
+      "MemoryGB": 2,
+      "CPU": 2,
+      "Profile": "Container"
+    },
+    {
+      "Name": "deb12-node",
+      "Distro": "Debian12",
+      "Role": "Database",
+      "MemoryGB": 2,
+      "CPU": 2,
+      "Profile": "Minimal"
+    },
+    {
+      "Name": "alma9-node",
+      "Distro": "AlmaLinux9",
+      "Role": "EnterpriseBackend",
+      "MemoryGB": 2,
+      "CPU": 2,
+      "Packages": ["curl", "git", "jq", "tmux"]
+    }
+  ]
+}

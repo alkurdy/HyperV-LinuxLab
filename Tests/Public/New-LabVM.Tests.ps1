@@ -54,4 +54,24 @@ Describe "New-LabVM" {
             $EnableSecureBoot -eq 'On' -and $SecureBootTemplate -eq 'MicrosoftUEFICertificateAuthority'
         }
     }
+
+    It "Provisions with -Distro parameter and persists local metadata.json" {
+        $result = New-LabVM -Name "test-deb-01" `
+            -Distro $script:mockBase `
+            -MemoryGB 2 `
+            -CPUCount 1 `
+            -Username "labuser" `
+            -LabStoragePath $script:labPath
+
+        $result.Name | Should -Be "test-deb-01"
+        $result.Username | Should -Be "labuser"
+        $result.Password | Should -Not -BeNullOrEmpty
+
+        # Verify metadata file was generated
+        $metaPath = Join-Path $script:labPath "test-deb-01\metadata.json"
+        (Test-Path $metaPath) | Should -BeTrue
+        $meta = Get-Content $metaPath -Raw | ConvertFrom-Json
+        $meta.Username | Should -Be "labuser"
+        $meta.Password | Should -Be $result.Password
+    }
 }

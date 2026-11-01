@@ -205,15 +205,19 @@ Creates a modern Generation 2 Hyper-V virtual machine utilizing a child differen
 ```powershell
 New-LabVM
     [-Name] <String>
-    [[-BaseImage] <String>]
+    [[-Distro] <String>]
     [[-MemoryGB] <Int32>]
     [[-CPUCount] <Int32>]
     [[-SwitchName] <String>]
     [[-SSHAuthorizedKey] <String>]
     [[-Username] <String>]
+    [[-Password] <SecureString>]
+    [[-Profile] <String>]
     [[-Packages] <String[]>]
+    [[-RunCommands] <String[]>]
     [[-LabStoragePath] <String>]
     [-Start]
+    [-Force]
     [-WhatIf]
     [-Confirm]
     [<CommonParameters>]
@@ -223,9 +227,9 @@ New-LabVM
 
 - **`-Name`** `<String>` *(Mandatory, Position 0)*
   Virtual machine identifier and guest hostname.
-- **`-BaseImage`** `<String>` *(Optional)*
-  Path to the parent base VHDX or distro name (`Ubuntu2404`).
-  - *Default*: Uses latest cached `Ubuntu2404` base image.
+- **`-Distro`** `<String>` *(Optional, Alias: `-BaseImage`)*
+  Linux distribution name (`Ubuntu2404`, `Ubuntu2204`, `Debian12`, `AlmaLinux9`) or direct file path to an existing parent VHDX. Automatically downloads and validates the base image if not yet cached locally.
+  - *Default*: `Ubuntu2404`
 - **`-MemoryGB`** `<Int32>` *(Optional)*
   Startup RAM allocated to the VM.
   - *Default*: `2` (2 GB RAM)
@@ -390,18 +394,24 @@ Get-LabVM
 #### Outputs
 - `[PSCustomObject[]]` with properties:
   - `Name`: VM identifier
+  - `Distro`: Linux distribution release (`Ubuntu2404`, `Debian12`, `AlmaLinux9`, etc.)
   - `State`: `Running`, `Off`, or `Paused`
-  - `IPv4`: Discovered IP address via KVP integration
+  - `IPv4`: Discovered IP address via KVP integration or cached metadata
+  - `Username`: Configured guest sudo account (e.g. `labadmin`)
+  - `Password`: Plaintext passphrase/password (stored in local `metadata.json`)
+  - `SSH`: Instant copy-paste connection command (`ssh labadmin@192.168.1.150`)
   - `CPU`: Virtual processor count
   - `MemoryMB`: Allocated RAM
   - `DifferencingDiskMB`: Actual physical disk consumption on host (~50MB - 300MB)
-  - `BaseImage`: Parent image name
+  - `ParentBase`: Parent image filename
+  - `Profile`: Applied toolchain profile
   - `Uptime`: Operating duration
 
 #### Example
 ```powershell
 Get-LabVM
-Get-LabVM -Name "k8s-*" | Format-Table Name, State, IPv4, DifferencingDiskMB
+Get-LabVM -Name "k8s-*" | Format-Table Name, Distro, State, IPv4, Username, SSH
+Get-LabVM -Name "node-01" | Format-List
 ```
 
 ---

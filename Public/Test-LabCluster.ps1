@@ -46,6 +46,12 @@ function Test-LabCluster {
         $errors += "Cluster specification must contain at least one node in 'Nodes' array."
     }
 
+    $validDistros = @("Ubuntu2404", "Ubuntu2204", "Debian12", "AlmaLinux9")
+    $clusterDistro = if ($cluster.Distro) { $cluster.Distro } elseif ($cluster.BaseImage) { $cluster.BaseImage } else { $null }
+    if ($clusterDistro -and -not ($validDistros -contains $clusterDistro -or (Test-Path $clusterDistro))) {
+        $errors += "Invalid cluster default distro '$clusterDistro'. Supported: $($validDistros -join ', ') or path to existing VHDX."
+    }
+
     $totalRAM = 0
     $totalCPU = 0
     $nodeNames = @()
@@ -57,6 +63,11 @@ function Test-LabCluster {
         }
 
         $fullNodeName = Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $n.Name
+
+        $nodeDistro = if ($n.Distro) { $n.Distro } elseif ($n.BaseImage) { $n.BaseImage } else { $null }
+        if ($nodeDistro -and -not ($validDistros -contains $nodeDistro -or (Test-Path $nodeDistro))) {
+            $errors += "Node '$($n.Name)' specifies invalid distro '$nodeDistro'. Supported: $($validDistros -join ', ') or path to existing VHDX."
+        }
 
         if ($nodeNames -contains $fullNodeName) {
             $errors += "Duplicate node name detected: '$fullNodeName'."

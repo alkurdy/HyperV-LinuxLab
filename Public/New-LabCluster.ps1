@@ -40,13 +40,35 @@ function New-LabCluster {
         }
 
         $cluster = Get-Content -Path $Path -Raw | ConvertFrom-Json
-        $baseDistro = if ($cluster.BaseImage) { $cluster.BaseImage } else { "Ubuntu2404" }
+        $defaultDistro = if ($cluster.Distro) {
+            $cluster.Distro
+        } elseif ($cluster.BaseImage) {
+            $cluster.BaseImage
+        } else {
+            "Ubuntu2404"
+        }
         $switchName = $cluster.SwitchName
 
         if ($PSCmdlet.ShouldProcess($cluster.ClusterName, "Deploy cluster with $($cluster.Nodes.Count) nodes")) {
-            # 2. Ensure base image is cached
-            Write-Information "--- Ensuring Base Image '$baseDistro' is Cached ---" -InformationAction Continue
-            $base = New-LabBaseImage -Distro $baseDistro
+            # Collect all distinct distros needed across cluster
+            $allDistros = @()
+            foreach ($n in $cluster.Nodes) {
+                $nodeDistro = if ($n.Distro) { $n.Distro } elseif ($n.BaseImage) { $n.BaseImage } else { $defaultDistro }
+                $allDistros += $nodeDistro
+            }
+            $uniqueDistros = $allDistros | Select-Object -Unique
+
+            # 2. Ensure base images are cached
+            $baseCache = @{}
+            foreach ($d in $uniqueDistros) {
+                if (Test-Path $d) {
+                    $baseCache[$d] = $d
+                } else {
+                    Write-Information "--- Ensuring Base Image '$d' is Cached ---" -InformationAction Continue
+                    $base = New-LabBaseImage -Distro $d
+                    $baseCache[$d] = $base.Path
+                }
+            }
 
             # Generate cluster-wide default passphrase
             $clusterPassphrase = New-LabPassphrase
@@ -57,15 +79,17 @@ function New-LabCluster {
             $deployed = @()
             foreach ($n in $cluster.Nodes) {
                 $fullNodeName = Get-LabClusterNodeName -ClusterName $cluster.ClusterName -NodeName $n.Name
+                $nodeDistro = if ($n.Distro) { $n.Distro } elseif ($n.BaseImage) { $n.BaseImage } else { $defaultDistro }
+                $nodeBasePath = if ($baseCache.ContainsKey($nodeDistro)) { $baseCache[$nodeDistro] } else { $nodeDistro }
 
                 $ram = if ($n.MemoryGB) { [int]$n.MemoryGB } else { 2 }
                 $cpu = if ($n.CPU) { [int]$n.CPU } else { 2 }
 
-                Write-Information "Provisioning node '$fullNodeName' (RAM: ${ram}GB, CPU: $cpu, Profile: $($n.Profile))..." -InformationAction Continue
+                Write-Information "Provisioning node '$fullNodeName' (Distro: $nodeDistro, RAM: ${ram}GB, CPU: $cpu, Profile: $($n.Profile))..." -InformationAction Continue
 
                 $vmParams = @{
                     Name      = $fullNodeName
-                    BaseImage = $base.Path
+                    Distro    = $nodeBasePath
                     MemoryGB  = $ram
                     CPUCount  = $cpu
                     Password  = $clusterSec
@@ -78,6 +102,7 @@ function New-LabCluster {
                 $vm = New-LabVM @vmParams
                 $deployed += [PSCustomObject]@{
                     Name     = $fullNodeName
+                    Distro   = $vm.Distro
                     Role     = if ($n.Role) { $n.Role } else { "Worker" }
                     State    = $vm.State
                     IPv4     = $vm.IPv4
@@ -95,7 +120,7 @@ function New-LabCluster {
 ============================================================
  [CLUSTER READY] $($cluster.ClusterName) ($($deployed.Count) Nodes)
 ------------------------------------------------------------
-$($deployed | Format-Table Name, Role, IPv4, CPU, MemoryGB, Profile | Out-String)
+$($deployed | Format-Table Name, Distro, Role, IPv4, CPU, MemoryGB, Profile | Out-String)
  Default Password : $clusterPassphrase
 
  SSH Access:

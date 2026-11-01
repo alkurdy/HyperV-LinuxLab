@@ -102,7 +102,7 @@ local-hostname: $Name
     $null = $sb.AppendLine("users:")
     $null = $sb.AppendLine("  - name: $Username")
     $null = $sb.AppendLine("    sudo: ALL=(ALL) NOPASSWD:ALL")
-    $null = $sb.AppendLine("    groups: [sudo, docker]")
+    $null = $sb.AppendLine("    groups: [sudo, wheel, admin, docker]")
     $null = $sb.AppendLine("    shell: /bin/bash")
 
     # Set default lab password if omitted

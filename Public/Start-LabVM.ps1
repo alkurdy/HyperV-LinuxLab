@@ -48,15 +48,19 @@ function Start-LabVM {
                 }
 
                 $ip = ""
+                $meta = Get-LabVMMetadata -VMName $vmName
+                $user = if ($meta.Username) { $meta.Username } else { "labadmin" }
+
                 if ($Wait) {
                     Write-Information "Waiting for VM '$vmName' to acquire an IP address..." -InformationAction Continue
                     $ip = Get-LabVMIPAddress -VMName $vmName -TimeoutSeconds $TimeoutSeconds
                     if ($ip) {
+                        Set-LabVMMetadata -VMName $vmName -IPv4 $ip | Out-Null
                         $infoContent = @"
  Name    : $vmName
  Status  : Running
  IPv4    : $ip
- Connect : ssh labadmin@$ip
+ Connect : ssh $user@$ip
 "@
                         $banner = Format-LabBanner -Title "[OK] Linux Lab VM Ready!" -Content $infoContent
                         Write-Information $banner -InformationAction Continue
@@ -69,7 +73,7 @@ function Start-LabVM {
                     Name  = $vmName
                     State = "Running"
                     IPv4  = $ip
-                    SSH   = if ($ip) { "ssh labadmin@$ip" } else { "" }
+                    SSH   = if ($ip) { "ssh $user@$ip" } else { "" }
                 }
             }
         }

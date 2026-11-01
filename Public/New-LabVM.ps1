@@ -8,8 +8,8 @@ function New-LabVM {
         attaches a generated cloud-init configuration ISO, and starts the virtual machine.
     .PARAMETER Name
         Virtual machine identifier and hostname.
-    .PARAMETER BaseImage
-        Path to parent VHDX base image or distribution name (defaults to 'Ubuntu2404').
+    .PARAMETER Distro
+        Linux distribution release name (Ubuntu2404, Ubuntu2204, Debian12, AlmaLinux9) or path to a parent VHDX image (defaults to 'Ubuntu2404'). Aliased as 'BaseImage'.
     .PARAMETER MemoryGB
         RAM in gigabytes allocated to the VM (default: 2).
     .PARAMETER CPUCount
@@ -28,6 +28,8 @@ function New-LabVM {
         Powers on the VM immediately upon creation.
     .EXAMPLE
         New-LabVM -Name "k8s-node01" -MemoryGB 4 -CPUCount 2 -Start
+    .EXAMPLE
+        New-LabVM -Name "deb-test" -Distro "Debian12" -Start
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([PSCustomObject])]
@@ -36,7 +38,8 @@ function New-LabVM {
         [string]$Name,
 
         [Parameter(Mandatory = $false)]
-        [string]$BaseImage = "Ubuntu2404",
+        [Alias('BaseImage')]
+        [string]$Distro = "Ubuntu2404",
 
         [int]$MemoryGB = 2,
 
@@ -82,18 +85,32 @@ function New-LabVM {
         throw "A virtual machine named '$Name' already exists in Hyper-V."
     }
 
-    # Resolve parent base image
-    $parentPath = $BaseImage
-    if (-not (Test-Path $parentPath)) {
+    # Resolve parent base image & distro
+    $parentPath = $Distro
+    $distroName = "Custom"
+    if (Test-Path $parentPath) {
+        $leaf = Split-Path $parentPath -Leaf
+        if ($leaf -match "ubuntu-24") { $distroName = "Ubuntu2404" }
+        elseif ($leaf -match "ubuntu-22") { $distroName = "Ubuntu2204" }
+        elseif ($leaf -match "debian-12") { $distroName = "Debian12" }
+        elseif ($leaf -match "AlmaLinux-9") { $distroName = "AlmaLinux9" }
+    } else {
         # Check in default BaseImages directory
         $cachedBases = Get-LabBaseImage
-        $match = $cachedBases | Where-Object { $_.Distro -eq $BaseImage -or $_.Name -like "*$BaseImage*" } | Select-Object -First 1
+        $match = $cachedBases | Where-Object { $_.Distro -eq $Distro -or $_.Name -like "*$Distro*" } | Select-Object -First 1
         if ($match) {
             $parentPath = $match.Path
+            $distroName = $match.Distro
         } else {
-            Write-Information "Base image '$BaseImage' not found locally. Initiating download..." -InformationAction Continue
-            $downloaded = New-LabBaseImage -Distro "Ubuntu2404"
+            $targetDistro = if (@("Ubuntu2404", "Ubuntu2204", "Debian12", "AlmaLinux9") -contains $Distro) {
+                $Distro
+            } else {
+                "Ubuntu2404"
+            }
+            Write-Information "Base image '$targetDistro' not found locally. Initiating download..." -InformationAction Continue
+            $downloaded = New-LabBaseImage -Distro $targetDistro
             $parentPath = $downloaded.Path
+            $distroName = $downloaded.Distro
         }
     }
 
@@ -196,16 +213,31 @@ function New-LabVM {
             }
         }
 
+        # Persist local VM metadata and sync to Hyper-V Notes
+        $sshCmd = if ($ipAddress) { "ssh $Username@$ipAddress" } else { "" }
+        $parentLeaf = Split-Path $parentPath -Leaf
+        Set-LabVMMetadata -VMName $Name `
+            -Distro $distroName `
+            -Username $Username `
+            -Password $plainPassword `
+            -IPv4 $ipAddress `
+            -SSH $sshCmd `
+            -Profile $Profile `
+            -ParentBase $parentLeaf `
+            -LabStoragePath $LabStoragePath | Out-Null
+
         return [PSCustomObject]@{
             Name              = $Name
+            Distro            = $distroName
             State             = if ($Start) { "Running" } else { "Off" }
             IPv4              = $ipAddress
-            SSH               = if ($ipAddress) { "ssh $Username@$ipAddress" } else { "" }
+            Username          = $Username
             Password          = $plainPassword
+            SSH               = $sshCmd
             Profile           = if ($Profile) { $Profile } else { "None" }
             CPU               = $CPUCount
             MemoryGB          = $MemoryGB
-            BaseImage         = (Split-Path $parentPath -Leaf)
+            BaseImage         = $parentLeaf
             DifferencingDisk  = $diffDiskPath
             Switch            = $vSwitch
         }

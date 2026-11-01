@@ -39,14 +39,50 @@ function Get-LabVM {
                 }
             }
 
+            # Retrieve local metadata
+            $meta = Get-LabVMMetadata -VMName $vm.Name
+
+            # Infer distro if metadata is Unknown but ParentBase is known
+            $distro = if ($meta.Distro -and $meta.Distro -ne "Unknown") {
+                $meta.Distro
+            } elseif ($parentBase -match "ubuntu-24") {
+                "Ubuntu2404"
+            } elseif ($parentBase -match "ubuntu-22") {
+                "Ubuntu2204"
+            } elseif ($parentBase -match "debian-12") {
+                "Debian12"
+            } elseif ($parentBase -match "AlmaLinux-9") {
+                "AlmaLinux9"
+            } else {
+                "Custom"
+            }
+
+            # Update cached IP in metadata if newly discovered
+            $effectiveIP = if ($ip) { $ip } else { $meta.IPv4 }
+            if ($ip -and $ip -ne $meta.IPv4) {
+                Set-LabVMMetadata -VMName $vm.Name -IPv4 $ip -Distro $distro | Out-Null
+            }
+
+            $user = if ($meta.Username) { $meta.Username } else { "labadmin" }
+            $sshCmd = if ($effectiveIP) {
+                "ssh $user@$effectiveIP"
+            } else {
+                ""
+            }
+
             [PSCustomObject]@{
                 Name                = $vm.Name
+                Distro              = $distro
                 State               = $vm.State.ToString()
-                IPv4                = $ip
+                IPv4                = $effectiveIP
+                Username            = $user
+                Password            = $meta.Password
+                SSH                 = $sshCmd
                 CPU                 = $vm.ProcessorCount
                 MemoryMB            = [math]::Round($vm.MemoryAssigned / 1MB, 0)
                 DifferencingDiskMB  = $diskSizeMB
-                ParentBase          = $parentBase
+                ParentBase          = if ($parentBase) { $parentBase } else { $meta.ParentBase }
+                Profile             = $meta.Profile
                 Uptime              = $vm.Uptime
             }
         }

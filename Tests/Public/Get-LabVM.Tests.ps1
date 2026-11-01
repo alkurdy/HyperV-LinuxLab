@@ -44,11 +44,34 @@ Describe "Get-LabVM" {
         $result.CPU | Should -Be 2
         $result.MemoryMB | Should -Be 2048
         $result.ParentBase | Should -Be "Ubuntu2404.vhdx"
+        $result.Distro | Should -Not -BeNullOrEmpty
+        $result.Username | Should -Be "labadmin"
+        $result.SSH | Should -Be "ssh labadmin@192.168.1.150"
     }
 
     It "Accepts VM names from pipeline" {
         $result = "node-01" | Get-LabVM
         $result | Should -Not -BeNullOrEmpty
         $result.Name | Should -Be "node-01"
+    }
+
+    It "Surfaces saved credentials and distro from metadata" {
+        Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Get-LabVMMetadata' -MockWith {
+            [PSCustomObject]@{
+                Name     = 'node-01'
+                Distro   = 'AlmaLinux9'
+                Username = 'clouduser'
+                Password = 'CustomPass123'
+                IPv4     = '192.168.1.150'
+                SSH      = 'ssh clouduser@192.168.1.150'
+                Profile  = 'SecurityLab'
+            }
+        }
+
+        $res = Get-LabVM -Name "node-01"
+        $res.Distro | Should -Be "AlmaLinux9"
+        $res.Username | Should -Be "clouduser"
+        $res.Password | Should -Be "CustomPass123"
+        $res.SSH | Should -Be "ssh clouduser@192.168.1.150"
     }
 }
