@@ -143,6 +143,21 @@ For complete parameter sets, pipeline options, and detailed examples, see **[doc
 
 ---
 
+## 📚 Systems Engineering & Under-the-Hood Tutorials
+
+Want to understand what `HyperV-LinuxLab` is doing under the hood without abstracting away native Windows virtualization? Explore our comprehensive 6-part deep-dive tutorials:
+
+- **[Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness](tutorials/01-prerequisites-and-hardware.md)**
+- **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](tutorials/02-installation-and-removal.md)**
+- **[Tutorial 03: Virtual Networking, Virtual Switches & Guest IP Routing](tutorials/03-virtual-networking.md)**
+- **[Tutorial 04: Virtual Storage, Golden Masters & Differencing Disks](tutorials/04-storage-and-differencing-disks.md)**
+- **[Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](tutorials/05-vm-architecture-and-cloud-init.md)**
+- **[Tutorial 06: VM Lifecycle, Telemetry, Credentials & Automation](tutorials/06-vm-lifecycle-and-telemetry.md)**
+
+See the full **[Tutorials Index](tutorials/README.md)**.
+
+---
+
 ## 🧪 Testing & Code Quality
 
 The module includes comprehensive **Pester 5.x** unit tests and **PSScriptAnalyzer** rules:
