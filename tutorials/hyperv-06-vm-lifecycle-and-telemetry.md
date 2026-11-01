@@ -1,5 +1,8 @@
-# Tutorial 06: VM Lifecycle, Telemetry, Credentials & Automation
+﻿# Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation
 
+> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Lab Track 01: Deploying Your Linux Lab â†’](lab-01-deployment-and-ssh.md)
+
+---
 Now that our VM is running and provisioned, let's look at day-2 operations. So you want to manage multiple running VMs, recall their dynamic IP addresses and passphrases, monitor resource consumption, and automate cluster startups without clicking through the Hyper-V GUI—how do we automate the complete lifecycle from the command line?
 
 In this final tutorial, we explore native Hyper-V power states, the dual-write metadata architecture, system startup auto-boot engines, and declarative cluster orchestration.
@@ -241,3 +244,11 @@ You now understand the complete low-level mechanics of Windows Hyper-V virtualiz
 - Dynamic KVP telemetry, dual-write metadata persistence, and clean teardown.
 
 Armed with this knowledge, you can use the high-level cmdlets in **`HyperV-LinuxLab`** with total confidence, knowing exactly what each command is orchestrating beneath the surface!
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Lab Track 01: Deploying Your Linux Lab â†’](lab-01-deployment-and-ssh.md) |
+| :--- | :---: | ---: |
+
+*(Hands-on lab drill: See [Lab Tutorial 05: Multi-Distro Clusters](lab-05-multi-distro-clusters.md)).*

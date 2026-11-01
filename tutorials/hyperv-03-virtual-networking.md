@@ -1,5 +1,8 @@
-# Tutorial 03: Virtual Networking, Virtual Switches & Guest IP Routing
+﻿# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
 
+> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 02: Installation & Removal](hyperv-02-installation-and-removal.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 04: Storage & Differencing Disks â†’](hyperv-04-storage-and-differencing-disks.md)
+
+---
 Now that we've got Hyper-V installed, verified, and operational, let's look at virtual networking. So you want your Linux VMs to talk to each other, fetch apt packages from the internet, and let you SSH into them from Windows Terminal—how does Hyper-V route those packets?
 
 Virtual networking is where most virtualization labs stumble. By understanding the virtual switch architecture and how Windows handles Network Address Translation (NAT), you can troubleshoot any connection issue with confidence.
@@ -173,4 +176,12 @@ Now, what happens when a VM gets stuck with an APIPA (`169.254.x.x`) address, or
 
 ---
 
-Now that our virtual network and IP discovery are solid, let's explore **[Tutorial 04: Virtual Storage & Differencing Disks](04-storage-and-differencing-disks.md)** to see how we achieve sub-5-second VM resets!
+Now that our virtual network and IP discovery are solid, let's explore **[Tutorial 04: Virtual Storage & Differencing Disks](hyperv-04-storage-and-differencing-disks.md)** to see how we achieve sub-5-second VM resets!
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Hyper-V 02: Installation & Removal](hyperv-02-installation-and-removal.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 04: Storage & Differencing Disks â†’](hyperv-04-storage-and-differencing-disks.md) |
+| :--- | :---: | ---: |
+
+*(Hands-on lab drill: See [Lab Tutorial 03: Linux Networking & Diagnostics](lab-03-processes-systemd-and-networking.md)).*

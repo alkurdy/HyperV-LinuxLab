@@ -52,13 +52,18 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ---
 
-## 📖 Step-by-Step Learning Guides
-- 🚀 **[Tutorial 1: Deploying Your Linux Lab & SSH Login (Key & Password)](docs/01_DEPLOYMENT_AND_SSH_LOGIN.md)**  
-  Walks step-by-step from zero to a running VM, testing both SSH key and password authentication.
-- 🐧 **[Tutorial 2: Linux Operating System Essentials & Mental Model](docs/02_LINUX_ESSENTIALS_OVERVIEW.md)**  
-  High-yield architectural overview of the Linux kernel, filesystem hierarchy, permissions, systemd, pipes, and networking.
-- 🛠️ **[Advanced Lab Drills: Snapshots & Instant Reset](docs/TUTORIAL_LEARNING_LINUX.md)**  
-  Break-fix scenarios, 2-second snapshots, and 3-second factory resets.
+## 📖 Hands-On Linux Lab Tutorials (Practitioner Track)
+
+- 🚀 **[Lab 01: Deploying Your Linux Lab & SSH Login (Key & Password)](tutorials/lab-01-deployment-and-ssh.md)**  
+  Walks step-by-step from zero to a running VM, storage Scream test protection, and dual SSH key/password authentication.
+- 🐧 **[Lab 02: Linux Operating System Mental Model & Filesystems](tutorials/lab-02-linux-mental-model-and-filesystems.md)**  
+  High-yield architectural mental model: kernel vs user space, `/` filesystem hierarchy, `/proc`/`/sys`, permissions, and system calls.
+- ⚙️ **[Lab 03: Processes, Systemd Services & Modern Networking](tutorials/lab-03-processes-systemd-and-networking.md)**  
+  PID 1 ancestry (`pstree`), `htop`, `systemctl`, `journalctl`, Unix pipes, and `iproute2` diagnostics.
+- 🛠️ **[Lab 04: Snapshots, Break-Fix Drills & Instant Disaster Recovery](tutorials/lab-04-snapshots-and-disaster-recovery.md)**  
+  Fearless failure: checkpoints (`Checkpoint-LabVM`), 2-second rollbacks (`Restore-LabVM`), catastrophic OS destruction, and 3-second differencing resets (`Reset-LabVM`).
+- 🌐 **[Lab 05: Multi-Distro Heterogeneous Clusters & Coexistence](tutorials/lab-05-multi-distro-clusters.md)**  
+  Running Ubuntu 24.04, Debian 12, and AlmaLinux 9 side-by-side on one NAT switch with automated credential recall.
 
 ---
 
@@ -147,12 +152,12 @@ For complete parameter sets, pipeline options, and detailed examples, see **[doc
 
 Want to understand what `HyperV-LinuxLab` is doing under the hood without abstracting away native Windows virtualization? Explore our comprehensive 6-part deep-dive tutorials:
 
-- **[Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness](tutorials/01-prerequisites-and-hardware.md)**
-- **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](tutorials/02-installation-and-removal.md)**
-- **[Tutorial 03: Virtual Networking, Virtual Switches & Guest IP Routing](tutorials/03-virtual-networking.md)**
-- **[Tutorial 04: Virtual Storage, Golden Masters & Differencing Disks](tutorials/04-storage-and-differencing-disks.md)**
-- **[Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](tutorials/05-vm-architecture-and-cloud-init.md)**
-- **[Tutorial 06: VM Lifecycle, Telemetry, Credentials & Automation](tutorials/06-vm-lifecycle-and-telemetry.md)**
+- **[Hyper-V 01: Prerequisites, Hardware Virtualization & Host Readiness](tutorials/hyperv-01-prerequisites-and-hardware.md)**
+- **[Hyper-V 02: Hyper-V Installation, Verification & Clean Removal](tutorials/hyperv-02-installation-and-removal.md)**
+- **[Hyper-V 03: Virtual Networking, Virtual Switches & Guest IP Routing](tutorials/hyperv-03-virtual-networking.md)**
+- **[Hyper-V 04: Virtual Storage, Golden Masters & Differencing Disks](tutorials/hyperv-04-storage-and-differencing-disks.md)**
+- **[Hyper-V 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](tutorials/hyperv-05-vm-architecture-and-cloud-init.md)**
+- **[Hyper-V 06: VM Lifecycle, Telemetry, Credentials & Automation](tutorials/hyperv-06-vm-lifecycle-and-telemetry.md)**
 
 See the full **[Tutorials Index](tutorials/README.md)**.
 

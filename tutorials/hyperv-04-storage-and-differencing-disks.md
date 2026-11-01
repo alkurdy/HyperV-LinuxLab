@@ -1,5 +1,8 @@
-# Tutorial 04: Virtual Storage, Golden Masters & Differencing Disks
+﻿# Hyper-V Tutorial 04: Virtual Storage & Differencing Disks
 
+> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 03: Virtual Networking](hyperv-03-virtual-networking.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](hyperv-05-vm-architecture-and-cloud-init.md)
+
+---
 Now that our virtual network and IP discovery are solid, let's look at storage. So you want to spin up a 3-node Kubernetes cluster or multi-distro testbed, but you don't want to burn 60 GB of disk space or wait 15 minutes for full disk clones—how do we spin up fresh VMs in seconds using almost no space?
 
 This is the secret sauce of `HyperV-LinuxLab`: **Child Differencing Disks**. In this tutorial, we will explore virtual hard disk architecture, parent-child pointer chains, and how atomic disk swaps achieve sub-5-second factory resets.
@@ -181,4 +184,12 @@ if ($freeGB -lt 10.0) {
 
 ---
 
-Now that our storage and differencing disk architecture is clear, let's explore **[Tutorial 05: VM Architecture, UEFI Gen2 & Cloud-Init](05-vm-architecture-and-cloud-init.md)** to see how VMs initialize without interactive installers!
+Now that our storage and differencing disk architecture is clear, let's explore **[Tutorial 05: VM Architecture, UEFI Gen2 & Cloud-Init](hyperv-05-vm-architecture-and-cloud-init.md)** to see how VMs initialize without interactive installers!
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Hyper-V 03: Virtual Networking](hyperv-03-virtual-networking.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](hyperv-05-vm-architecture-and-cloud-init.md) |
+| :--- | :---: | ---: |
+
+*(Hands-on lab drill: See [Lab Tutorial 04: Snapshots & Disaster Recovery](lab-04-snapshots-and-disaster-recovery.md)).*

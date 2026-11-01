@@ -1,5 +1,8 @@
-# Tutorial 02: Hyper-V Installation, Reboot Lifecycle & Clean Removal
+﻿# Hyper-V Tutorial 02: Hyper-V Installation, Reboot Lifecycle & Clean Removal
 
+> **[HyperV-LinuxLab Tutorials Hub](README.md)** â€¢ **Track 2: Hyper-V Systems Engineering** â€¢ [â† Previous: Hyper-V 01: Prerequisites & Hardware](hyperv-01-prerequisites-and-hardware.md) â€¢ [ðŸ“‘ Index](README.md) â€¢ [Next: Hyper-V 03: Virtual Networking â†’](hyperv-03-virtual-networking.md)
+
+---
 Now that we've got host prerequisites verified, let's look at installing the Hyper-V role—and just as importantly, how to cleanly remove it when you want to start fresh or troubleshoot a broken state.
 
 Installing Hyper-V isn't like installing a regular application. Because Hyper-V is a Type-1 hypervisor, enabling it fundamentally restructures how your CPU boots and how Windows executes. In this tutorial, we will walk through the full lifecycle: provisioning, the reboot state machine, verification, and complete uninstallation.
@@ -177,4 +180,12 @@ Get-Content -Path "C:\Windows\Logs\CBS\CBS.log" -Tail 50 | Select-String "Error"
 
 ---
 
-Now that we've got Hyper-V installed, verified, and operational, let's explore **[Tutorial 03: Virtual Networking & Guest IP Routing](03-virtual-networking.md)** to see how VMs get network connectivity.
+Now that we've got Hyper-V installed, verified, and operational, let's explore **[Tutorial 03: Virtual Networking & Guest IP Routing](hyperv-03-virtual-networking.md)** to see how VMs get network connectivity.
+
+---
+
+### ðŸ§­ Navigation
+| [â† Previous: Hyper-V 01: Prerequisites & Hardware](hyperv-01-prerequisites-and-hardware.md) | [ðŸ“‘ All Tutorials](README.md) | [Next: Hyper-V 03: Virtual Networking â†’](hyperv-03-virtual-networking.md) |
+| :--- | :---: | ---: |
+
+*(Hands-on lab drill: See [Lab Tutorial 01: Deploying Your Linux Lab](lab-01-deployment-and-ssh.md)).*
