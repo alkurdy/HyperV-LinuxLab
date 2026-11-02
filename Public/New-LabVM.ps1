@@ -159,7 +159,8 @@ function New-LabVM {
             -SwitchName $vSwitch `
             -Path $LabStoragePath
 
-        # 4. Tune CPU, RAM, and UEFI Firmware
+        # 4. Tune CPU, RAM, Checkpoints, and UEFI Firmware
+        Hyper-V\Set-VM -Name $Name -AutomaticCheckpointsEnabled $false | Out-Null
         Hyper-V\Set-VMProcessor -VMName $Name -Count $CPUCount | Out-Null
         Hyper-V\Set-VMMemory -VMName $Name -DynamicMemoryEnabled $false | Out-Null
 

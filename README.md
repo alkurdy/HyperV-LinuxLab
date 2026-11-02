@@ -52,18 +52,24 @@ When learning Linux systems engineering, testing Kubernetes clusters (`kubeadm`)
 
 ---
 
-## 📖 Hands-On Linux Lab Tutorials (Practitioner Track)
+## 📖 Enterprise Linux Systems Engineering Mastery (Practitioner Track)
 
-- 🚀 **[Lab 01: Deploying Your Linux Lab & SSH Login (Key & Password)](tutorials/linux/01-deployment-and-ssh/README.md)**  
-  Walks step-by-step from zero to a running VM, storage Scream test protection, and dual SSH key/password authentication.
-- 🐧 **[Lab 02: Linux Operating System Mental Model & Filesystems](tutorials/linux/02-linux-mental-model-and-filesystems/README.md)**  
-  High-yield architectural mental model: kernel vs user space, `/` filesystem hierarchy, `/proc`/`/sys`, permissions, and system calls.
-- ⚙️ **[Lab 03: Processes, Systemd Services & Modern Networking](tutorials/linux/03-processes-systemd-and-networking/README.md)**  
-  PID 1 ancestry (`pstree`), `htop`, `systemctl`, `journalctl`, Unix pipes, and `iproute2` diagnostics.
-- 🛠️ **[Lab 04: Snapshots, Break-Fix Drills & Instant Disaster Recovery](tutorials/linux/04-snapshots-and-disaster-recovery/README.md)**  
-  Fearless failure: checkpoints (`Checkpoint-LabVM`), 2-second rollbacks (`Restore-LabVM`), catastrophic OS destruction, and 3-second differencing resets (`Reset-LabVM`).
-- 🌐 **[Lab 05: Multi-Distro Heterogeneous Clusters & Coexistence](tutorials/linux/05-multi-distro-clusters/README.md)**  
-  Running Ubuntu 24.04, Debian 12, and AlmaLinux 9 side-by-side on one NAT switch with automated credential recall.
+- 🐧 **[Level 01: Mental Model & Architecture](tutorials/01-sysadmin-foundations/level-01-mental-model-and-architecture/README.md)**  
+  Windows NT vs Linux VFS unified hierarchy, Ring 0 monolithic kernel vs Ring 3, `/proc`/`/sys`/`/dev`, standard streams and pipes.
+- 🔐 **[Level 02: Identity, Users, Groups & Permissions](tutorials/01-sysadmin-foundations/level-02-identity-users-and-permissions/README.md)**  
+  UID/GID databases, `visudo` privilege escalation, octal/symbolic permissions, SGID team collaboration folders, POSIX ACLs.
+- 💽 **[Level 03: Directory Hierarchy & Block Storage](tutorials/01-sysadmin-foundations/level-03-directory-hierarchy-and-storage/README.md)**  
+  Filesystem Hierarchy Standard (FHS 3.0), block devices (`/dev/sdX`, `nvme`), GPT partitioning, `ext4`/`xfs`, persistent `/etc/fstab` UUIDs, swap.
+- 🩺 **[Level 04: Troubleshooting, Logging & Diagnostics](tutorials/01-sysadmin-foundations/level-04-troubleshooting-logs-and-diagnostics/README.md)**  
+  `journalctl` timeframes and post-crash boot analysis, `dmesg -T` OOM Killer triage, inode exhaustion (`df -i`), open file handle leaks (`lsof +L1`).
+- ⚙️ **[Level 05: Process Lifecycle, Signals & Systemd](tutorials/01-sysadmin-foundations/level-05-processes-systemd-and-signals/README.md)**  
+  PID 1 ancestry, D-state/Zombie states, POSIX signals (`SIGTERM`, `SIGKILL`, `SIGHUP`), authoring production `.service` units, auto-recovery.
+- 🌐 **[Level 06: Linux Networking & Connectivity](tutorials/01-sysadmin-foundations/level-06-networking-and-connectivity/README.md)**  
+  Modern `iproute2` (`ip a`, `ip r`), Netplan vs NetworkManager, DNS stub resolver, socket inspection (`ss -tulpn`), host firewalls (`ufw`/`firewalld`).
+- 🤖 **[Level 07: Automation, Bash Scripting & Software Lifecycle](tutorials/01-sysadmin-foundations/level-07-automation-bash-and-package-lifecycle/README.md)**  
+  Package lifecycles (`apt` vs `dnf`), cron scheduling, defensive strict Bash (`set -euo pipefail`), `sed`/`awk`, full break-fix capstone drill.
+
+See the complete **[Learning Hub Index](tutorials/README.md)**.
 
 ---
 
@@ -76,25 +82,37 @@ Import-Module .\HyperV-LinuxLab.psd1
 Test-LabPrerequisites
 ```
 
-### 2. Download Base Image (Once)
+### 2. Enable Hyper-V (If Not Already Installed)
+If `Test-LabPrerequisites` reports `HyperVModule: False`, enable the Hyper-V role and reboot:
+```powershell
+Install-LabHyperV -Restart
+```
+
+### 3. Optional: Configure High-Capacity Storage
+If you have a secondary high-capacity SSD (e.g. `D:\`), set it as your lab storage root:
+```powershell
+Set-LabConfiguration -StoragePath "D:\HyperV-LinuxLab"
+```
+
+### 4. Download Base Image (Once)
 Downloads and verifies the official Ubuntu 24.04 LTS Cloud VHDX:
 ```powershell
 New-LabBaseImage -Distro Ubuntu2404
 ```
 
-### 3. Spin Up a Linux Sandbox
+### 5. Spin Up a Linux Sandbox
 Provisions a Generation 2 UEFI Linux VM with a differencing disk and boots it:
 ```powershell
 New-LabVM -Name "linux-box" -MemoryGB 2 -CPUCount 2 -Start
 ```
 *Your VM boots in ~15 seconds and automatically displays its assigned IP address.*
 
-### 4. Connect via SSH
+### 6. Connect via SSH
 ```powershell
 ssh labadmin@<VM_IP>
 ```
 
-### 5. Instant Reset to Factory State (Sub-5 Seconds!)
+### 7. Instant Reset to Factory State (Sub-5 Seconds!)
 Broke the OS? Network stack corrupt? Messed up a Kubernetes installation? Reset back to factory clean state in 3 seconds:
 ```powershell
 Reset-LabVM -Name "linux-box" -Force
@@ -152,14 +170,29 @@ For complete parameter sets, pipeline options, and detailed examples, see **[doc
 
 Want to understand what `HyperV-LinuxLab` is doing under the hood without abstracting away native Windows virtualization? Explore our comprehensive 6-part deep-dive tutorials:
 
-- **[Hyper-V 01: Prerequisites, Hardware Virtualization & Host Readiness](tutorials/hyperv/01-prerequisites-and-hardware/README.md)**
-- **[Hyper-V 02: Hyper-V Installation, Verification & Clean Removal](tutorials/hyperv/02-installation-and-removal/README.md)**
-- **[Hyper-V 03: Virtual Networking, Virtual Switches & Guest IP Routing](tutorials/hyperv/03-virtual-networking/README.md)**
-- **[Hyper-V 04: Virtual Storage, Golden Masters & Differencing Disks](tutorials/hyperv/04-storage-and-differencing-disks/README.md)**
-- **[Hyper-V 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](tutorials/hyperv/05-vm-architecture-and-cloud-init/README.md)**
-- **[Hyper-V 06: VM Lifecycle, Telemetry, Credentials & Automation](tutorials/hyperv/06-vm-lifecycle-and-telemetry/README.md)**
+- **[Hyper-V 01: Prerequisites, Hardware Virtualization & Host Readiness](tutorials/hyperv-internals/01-prerequisites-and-hardware/README.md)**
+- **[Hyper-V 02: Hyper-V Installation, Verification & Clean Removal](tutorials/hyperv-internals/02-installation-and-removal/README.md)**
+- **[Hyper-V 03: Virtual Networking, Virtual Switches & Guest IP Routing](tutorials/hyperv-internals/03-virtual-networking/README.md)**
+- **[Hyper-V 04: Virtual Storage, Golden Masters & Differencing Disks](tutorials/hyperv-internals/04-storage-and-differencing-disks/README.md)**
+- **[Hyper-V 05: VM Architecture, Generation 2 UEFI & Cloud-Init Provisioning](tutorials/hyperv-internals/05-vm-architecture-and-cloud-init/README.md)**
+- **[Hyper-V 06: VM Lifecycle, Telemetry, Credentials & Automation](tutorials/hyperv-internals/06-vm-lifecycle-and-telemetry/README.md)**
 
 See the full **[Tutorials Index](tutorials/README.md)**.
+
+---
+
+## 🔮 Upcoming Capabilities & Roadmap
+
+We are actively expanding `HyperV-LinuxLab` to power advanced cross-platform systems engineering and SRE training:
+
+- 🐧 **3-Tier Enterprise Linux Systems Mastery Curriculum**:
+  A 21-level structured engineering ladder taking administrators from foundational systems concepts (FHS, permissions, systemd, networking) up through advanced storage plumbing (LVM/RAID), PAM/SELinux, eBPF dynamic tracing, and high-availability clustering.
+- 🪟 **Hybrid Windows Server Guest Nodes**:
+  Automated provisioning of Windows Server 2022/2025 evaluation guests using unattended XML ISO injection, enabling heterogeneous multi-OS testing (Active Directory, WinRM, and cross-platform Ansible playbooks).
+- 🌐 **Isolated Multi-Homed Network Topologies**:
+  Declarative support for multi-NIC guests, private internal virtual switches, DMZ perimeter routing, and packet filtering labs without interfering with host network adapters.
+- 📋 **Ansible Dynamic Inventory Export**:
+  Automatic extraction of running cluster nodes, guest IP addresses, and SSH credentials into standard Ansible inventory files (`hosts.yaml`) for instant playbook orchestration.
 
 ---
 

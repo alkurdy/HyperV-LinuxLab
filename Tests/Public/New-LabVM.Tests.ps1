@@ -23,6 +23,7 @@ Describe "New-LabVM" {
                 Id   = [guid]::NewGuid()
             }
         }
+        Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VM' -MockWith { }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMProcessor' -MockWith { }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMMemory' -MockWith { }
         Mock -ModuleName 'HyperV-LinuxLab' -CommandName 'Hyper-V\Set-VMFirmware' -MockWith { }

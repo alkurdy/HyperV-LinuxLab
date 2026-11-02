@@ -169,3 +169,28 @@ Before running `HyperV-LinuxLab`, the host environment must satisfy the followin
 | **Hyper-V Feature** | `Microsoft-Hyper-V-All` enabled | `Microsoft-Hyper-V-All` enabled | `Get-Command 'Hyper-V\New-VM'` |
 | **Virtual Switch** | `Default Switch` (internal NAT) or custom internal switch | `Default Switch` | `Hyper-V\Get-VMSwitch` |
 | **Network Access** | Outbound HTTPS/ICMP access to `cloud-images.ubuntu.com` | Direct broadband connection | `Test-Connection -ComputerName cloud-images.ubuntu.com` |
+
+---
+
+## 6. Architectural Roadmap & Upcoming Capabilities
+
+The `HyperV-LinuxLab` architecture is engineered to scale across four upcoming capability tiers:
+
+### 6.1 Enterprise Linux Systems Engineering Curriculum (Tiers 1 - 3)
+A comprehensive 21-module hands-on engineering track grounded in standard operating systems literature and real-world break-fix drills:
+- **Tier 1 (Foundations)**: Virtual filesystem abstraction, POSIX user/group databases, block storage & persistent mounting, diagnostic logging (`journald`/`dmesg`), systemd unit authoring, `iproute2` networking, and defensive Bash automation.
+- **Tier 2 (Advanced Engineering)**: LVM thin provisioning & software RAID, network namespaces and bridge switching, PAM authentication stacks, Mandatory Access Control (SELinux / AppArmor), rootless container engines (Podman/cgroups v2), and Ansible fleet automation.
+- **Tier 3 (Expert & SRE)**: Kernel virtual memory allocators (SLAB/HugePages), eBPF in-kernel dynamic tracing, Pacemaker/Corosync clustering, Kerberos/SSSD realm integration, high-throughput packet processing (XDP/DPDK), and catastrophic recovery (GRUB rescue/chroot).
+
+### 6.2 Hybrid Heterogeneous Topologies (Windows Server Guest Nodes)
+Extending the declarative JSON cluster engine (`New-LabCluster`) to provision Windows Server 2022/2025 guests:
+- **Unattended Provisioning**: Pure PowerShell generation of virtual `unattend.iso` embedding `autounattend.xml`.
+- **Ansible & Management Hooks**: Automated first-boot configuration of WinRM (HTTP/HTTPS) and Windows OpenSSH server, surfacing connection strings alongside Linux nodes.
+
+### 6.3 Multi-Switch & Isolated Virtual Topologies
+Support for complex multi-tier enterprise network simulations:
+- Creation of private non-routable internal virtual switches for backend database tiers.
+- Multi-adapter VM assignment with distinct interface metrics and gateway routing policies.
+
+### 6.4 Ansible Dynamic Inventory Generation
+A native cmdlet (`Export-LabAnsibleInventory`) that queries active lab VMs and writes fully qualified YAML/INI inventory files containing hostnames, IP addresses, SSH keys, WinRM credentials, and cluster group tags.

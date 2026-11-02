@@ -1,89 +1,74 @@
 # HyperV-LinuxLab Development & Refactoring Notes
 
 *Created: 2026-10-31T21:58:30-04:00*  
-*Last Updated: 2026-10-31T23:51:00-04:00*
+*Last Updated: 2026-11-01T22:15:00-05:00*
 
 ## Current Machine State & Next Session Hand-off
-- **Hyper-V Feature State**: `Disabled` (via `Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart`).
-- **Windows CBS State**: `PendingReboot: True` in `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending`.
-- **Lab Storage**: Completely wiped on target drives. Non-lab VMs preserved intact.
-- **Git State**: Clean working tree on `main`, synchronized with remote.
-- **Immediate Step On Resume**: Reboot host (`Restart-Computer`) to unload `hvix64.sys` microkernel, then run validation runbook below.
+- **Hyper-V Feature State**: `Enabled` & Active in Ring -1 (`HypervisorPresent: True`, `vmms` running).
+- **Windows CBS State**: Clean, no pending reboot.
+- **Lab Storage**: Configured to `D:\HyperV-LinuxLab` (942 GB free).
+- **Golden Base Images**: Ubuntu 24.04 LTS cached and read-only.
+- **Git State**: Clean, working tree synchronized with remote.
+- **Test Suite Health**: 98/98 unit tests passing (100%). PSScriptAnalyzer 0 issues.
 
 ---
 
 ## Index
 
-- [0. Next Session Priority: End-to-End Hyper-V Role Lifecycle Validation](#0-next-session-priority-end-to-end-hyper-v-role-lifecycle-validation)
-- [1. Active Sprint Backlog](#1-active-sprint-backlog)
-- [2. Architectural & DRY Tracking](#2-architectural--dry-tracking)
-- [3. Linux Distro Expansion Catalog](#3-linux-distro-expansion-catalog)
-- [4. Documentation & Secondary Updates Backlog](#4-documentation--secondary-updates-backlog)
-- [5. Completed & Archived Work Log](#5-completed--archived-work-log)
+- [0. Active Kanban Sprint Board](#0-active-kanban-sprint-board)
+- [1. Architectural & DRY Tracking](#1-architectural--dry-tracking)
+- [2. Linux Distro Expansion Catalog](#2-linux-distro-expansion-catalog)
+- [3. Documentation & Secondary Updates Backlog](#3-documentation--secondary-updates-backlog)
+- [4. Completed & Archived Work Log](#4-completed--archived-work-log)
 
 ---
 
-## 0. Next Session Priority: End-to-End Hyper-V Role Lifecycle Validation
+## 0. Active Kanban Sprint Board
 
-**Goal**: Validate complete uninstallation of Hyper-V from host, reboot, and reinstallation via `Install-LabHyperV` to verify real-world hardware virtualization check, DISM provisioning, reboot detection, and lab bringup.
-
-### Validation Runbook:
-
-```powershell
-# 1. Host Restart (Unload hypervisor microkernel)
-Restart-Computer
-
-# 2. Post-Uninstall Verification (In elevated PowerShell 7 or 5.1)
-Import-Module .\HyperV-LinuxLab.psd1 -Force
-$pre = Test-LabPrerequisites -Detailed
-# Expected:
-#   $pre.Status == 'Failed'
-#   $pre.HyperVModule == $false
-#   $pre.PendingReboot == $false
-#   Recommendation recommends running Install-LabHyperV
-
-# 3. Execute Role Installation via Lab Tool
-Install-LabHyperV -Restart
-# Expected:
-#   - Validates firmware VT-x/AMD-V
-#   - Validates Windows Edition (Pro/Enterprise/Server)
-#   - Checks third-party hypervisors (VirtualBox, VMware)
-#   - Enables Microsoft-Hyper-V-All feature
-#   - Detects pending reboot state and reboots computer automatically
-
-# 4. Post-Reinstall Verification (After Automated Reboot)
-Import-Module .\HyperV-LinuxLab.psd1 -Force
-Test-LabPrerequisites -Detailed
-# Expected: Status == 'Ready'
-
-# 5. End-to-End Lab Deployment Test
-# Spin up 3-node heterogeneous cluster (Ubuntu + Debian + AlmaLinux)
-New-LabCluster -Path .\examples\multi-distro-cluster.json -AutoDownload
-
-# Verify metadata, IPs, and credentials recall
-Get-LabVM
-Test-LabCluster -Path .\examples\multi-distro-cluster.json
-
-# Clean Teardown
-Remove-LabCluster -Path .\examples\multi-distro-cluster.json -Force
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            INTERNAL KANBAN BOARD                            │
+├─────────────────────┬───────────────────────────┬───────────────────────────┤
+│ BACKLOG             │ IN PROGRESS               │ DONE (RECENTLY SHIPPED)   │
+├─────────────────────┼───────────────────────────┼───────────────────────────┤
+│ • Multi-NIC Lab     │ • PHASE-11: Windows Guest │ • Clean Install End-to-End│
+│   Topologies (DMZ,  │   Node Support (WinRM,    │   Validation on Win 11 Pro│
+│   isolated vSwitch) │   OpenSSH & Ansible)      │ • Win 11 Auto Checkpoint  │
+│ • Tier 2 Curriculum │ • Tier 2 Advanced Linux   │   (.avhdx) trap resolution│
+│   Script Automation │   Systems Engineering     │ • Test-LabPrerequisites   │
+│ • Dynamic Ansible   │   Module Expansion        │   module-load fix & banner│
+│   Inventory Export  │                           │ • Unsynced Curriculum Hub │
+│ • Tier 3 Expert SRE │                           │   (Tier 1: 7 Levels done, │
+│   Hands-on Drills   │                           │   Tiers 2 & 3 Roadmapped) │
+└─────────────────────┴───────────────────────────┴───────────────────────────┘
 ```
 
----
+### Detailed Column Breakdown:
 
-## 1. Active Sprint Backlog
+#### 📋 Backlog
+- [ ] **Multi-NIC Custom Lab Topologies**: Support secondary private internal virtual switches alongside Default Switch for isolated DMZ or backend DB networks.
+- [ ] **Ansible Dynamic Inventory Integration**: Generate native YAML/INI Ansible inventory from `Get-LabVM` runtime telemetry.
+- [ ] **Tier 2 Interactive Script Automation**: Author automated validation scripts for LVM resizing, software RAID failure simulation, and PAM lockout drills.
+- [ ] **Tier 3 Expert Chaos Lab Scripts**: Automated injection scripts for kernel memory pressure, network dropped packets (`tc`), and GRUB repair drills.
 
+#### 🚧 In Progress
 - [ ] **[PHASE-11] Windows Guest Node Support (Ansible & Hybrid Labs)**:
   - Base Image: Microsoft official evaluation VHDX (Windows Server 2022 / 2025 Eval 180-day).
   - Unattended Config: Build `Private\New-LabUnattendISO.ps1` generating `autounattend.xml` on virtual ISO.
   - Ansible Telemetry: Auto-configure WinRM (HTTP/HTTPS) and Windows OpenSSH server on first boot.
   - Routing & VM Creation: Update `New-LabVM` to branch between Cloud-Init (`cidata.iso`) and Unattend (`unattend.iso`).
   - Inventory: Surface `WinRM` endpoint (`http://<ip>:5985`) in `Get-LabVM` and `metadata.json`.
-- [x] **[PHASE-10] Multi-Distro Coexistence & Local VM Metadata Persistence** *(Archived: 2026-10-31T23:18:00-04:00)*
-- [x] **[PHASE-9] Hyper-V Role Lifecycle & Automated Provisioning (`Install-LabHyperV.ps1`)** *(Archived: 2026-10-31T22:35:00-04:00)*
+- [ ] **Tier 2 Advanced Systems Engineering Expansion**: Authoring interactive exercises for LVM thin provisioning and Linux network namespaces.
+
+#### ✅ Done (Recently Shipped)
+- [x] **End-to-End Clean Install Validation & Hyper-V Role Reinstallation**: Tested zero-state machine, enabled `Microsoft-Hyper-V-All`, rebooted host, verified microkernel presence in Ring -1, pulled base image, and provisioned VM live.
+- [x] **Windows 11 Automatic Checkpoints (`.avhdx`) Resolution**: Disabled `AutomaticCheckpointsEnabled` on newly provisioned VMs in `New-LabVM.ps1`; hardened `Reset-LabVM.ps1` to traverse AVHDX chains back to root differencing disk.
+- [x] **`Test-LabPrerequisites` Diagnostic Hardening**: Suppressed engine-level module autoload errors when Hyper-V is absent; enhanced pending reboot warning banner.
+- [x] **Enterprise Linux Systems Engineering Curriculum**: Created unsynced `curriculum/` repository with Tier 1 (7 complete levels), Tier 2 (7 modules roadmapped), and Tier 3 (7 modules roadmapped) grounded in `D:\Books\IT\`.
 
 ---
 
-## 2. Architectural & DRY Tracking
+## 1. Architectural & DRY Tracking
 
 | Pattern | Status | Implementation Details |
 | :--- | :--- | :--- |

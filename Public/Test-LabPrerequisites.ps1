@@ -68,8 +68,8 @@ function Test-LabPrerequisites {
     $checks["NoPendingReboot"] = (-not $pendingReboot)
 
     # 4. Virtual switch availability
-    $switches = Hyper-V\Get-VMSwitch -ErrorAction SilentlyContinue
-    $checks["VirtualSwitchAvailable"] = ($null -ne $switches -and $switches.Count -gt 0)
+    $switches = if ($hasHyperV) { Hyper-V\Get-VMSwitch -ErrorAction SilentlyContinue } else { @() }
+    $checks["VirtualSwitchAvailable"] = ($null -ne $switches -and @($switches).Count -gt 0)
 
     # Evaluate target volume (explicit parameter, persistent config, or fallback)
     $targetPath = if ($StoragePath -and $StoragePath -ne "C:\") {
@@ -155,8 +155,20 @@ function Test-LabPrerequisites {
         $failedLines = @()
         if (-not $isAdmin) { $failedLines += "   Admin Rights : Not elevated -> Re-launch PowerShell as Administrator" }
         if (-not $hyperVSupported) { $failedLines += "   OS Edition   : $caption -> Windows Home does not support Hyper-V (Pro/Enterprise required)" }
-        if (-not $hasHyperV) { $failedLines += "   Hyper-V Role : Not installed -> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All" }
-        if (-not $checks["VirtualSwitchAvailable"]) { $failedLines += "   V-Switch     : Missing -> Create 'Default Switch' or Internal Switch in Hyper-V" }
+        if (-not $hasHyperV) {
+            if ($pendingReboot) {
+                $failedLines += "   Hyper-V Role : Staged, pending reboot -> Restart host computer to activate"
+            } else {
+                $failedLines += "   Hyper-V Role : Not installed -> Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All"
+            }
+        }
+        if (-not $checks["VirtualSwitchAvailable"]) {
+            if ($pendingReboot) {
+                $failedLines += "   V-Switch     : Pending reboot -> Virtual switch stack activates after restart"
+            } else {
+                $failedLines += "   V-Switch     : Missing -> Create 'Default Switch' or Internal Switch in Hyper-V"
+            }
+        }
         if (-not $cpuSufficient) { $failedLines += "   CPU Cores    : $totalCores logical cores (Minimum recommended: $MinimumCPUCount cores)" }
         if (-not $ramSufficient) { $failedLines += "   Host RAM     : ${totalRamGB} GB (Minimum recommended: ${MinimumMemoryGB} GB)" }
         if (-not $storageSufficient) {

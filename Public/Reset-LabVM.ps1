@@ -58,13 +58,26 @@ function Reset-LabVM {
 
                 $diffPath = $hardDrive.Path
                 if ($diffPath -match '\.avhdx$') {
-                    Write-Verbose "Checkpoint chain detected ($diffPath). Collapsing snapshots..."
-                    Hyper-V\Get-VMSnapshot -VMName $vmName -ErrorAction SilentlyContinue | Hyper-V\Remove-VMSnapshot | Out-Null
-                    $hardDrive = Hyper-V\Get-VMHardDiskDrive -VMName $vmName | Select-Object -First 1
-                    $diffPath = $hardDrive.Path
+                    Write-Verbose "Checkpoint chain detected ($diffPath). Removing snapshots..."
+                    Hyper-V\Get-VMSnapshot -VMName $vmName -ErrorAction SilentlyContinue | Hyper-V\Remove-VMSnapshot -Confirm:$false | Out-Null
+
+                    # Traverse parent chain to locate the root differencing .vhdx
+                    $vhdInfo = Hyper-V\Get-VHD -Path $diffPath
+                    while ($vhdInfo.Path -match '\.avhdx$' -and $vhdInfo.ParentPath) {
+                        $diffPath = $vhdInfo.ParentPath
+                        $vhdInfo = Hyper-V\Get-VHD -Path $diffPath
+                    }
+
+                    # Reattach root differencing disk to VM drive
+                    Hyper-V\Set-VMHardDiskDrive -VMName $vmName `
+                        -ControllerType $hardDrive.ControllerType `
+                        -ControllerNumber $hardDrive.ControllerNumber `
+                        -ControllerLocation $hardDrive.ControllerLocation `
+                        -Path $diffPath -ErrorAction SilentlyContinue | Out-Null
+                } else {
+                    $vhdInfo = Hyper-V\Get-VHD -Path $diffPath
                 }
 
-                $vhdInfo = Hyper-V\Get-VHD -Path $diffPath
                 $parentPath = $vhdInfo.ParentPath
 
                 if (-not $parentPath -or -not (Test-Path $parentPath)) {
