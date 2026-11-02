@@ -41,19 +41,47 @@ Linux stores local identity in three plaintext colon-delimited flat files in `/e
 
 ## 2. Managing Users, Groups & Password Lifecycles
 
-### Creating Accounts
+### Primary vs Supplementary Groups
+- **Primary Group**: Assigned in `/etc/passwd` at account creation. When a user creates a new file, the file's owning group defaults to this primary GID. Each user has exactly **one** primary group.
+- **Supplementary (Secondary) Groups**: Assigned in `/etc/group`. Grants access to additional shared directories, services (e.g. `docker`, `libvirt`), or administrative roles. A user can belong to multiple supplementary groups.
+
+### Account Creation & The Critical `-a` Append Flag
 ```bash
-# Create a dedicated system service account with no home dir and no interactive shell
+# 1. Create a group
+sudo groupadd developers
+
+# 2. Create a system service account (no home dir, nologin shell, UID < 1000)
 sudo useradd -r -s /usr/sbin/nologin -d /var/lib/mydaemon mydaemon
 
-# Create a standard human developer account with auto-created home dir and bash shell
-sudo useradd -m -s /bin/bash -c "Sarah Connor - Systems Lead" sconnor
+# 3. Create an interactive developer account with custom home directory (-d) and bash shell (-s)
+sudo useradd -m -d /home/sconnor -s /bin/bash -c "Sarah Connor - Systems Lead" sconnor
 
-# Set or reset password
+# 4. Set or reset user password
 echo "sconnor:SecurePassword123!" | sudo chpasswd
 
-# Assign supplementary groups
-sudo usermod -aG sudo,docker sconnor
+# 5. Add user to supplementary groups (CRITICAL: ALWAYS USE -a TO APPEND!)
+sudo usermod -a -G developers,sudo sconnor
+```
+
+> [!WARNING]
+> **The `usermod -G` Group Wipeout Trap**: When using `usermod -G`, the `-a` (append) flag is **mandatory**. If you run `usermod -G developers sconnor` without `-a`, the operating system **removes the user from all other supplementary groups**, silently revoking their `sudo` and administrative memberships!
+
+### Inspecting Identity & Switching Contexts
+```bash
+# Query current user's UID, primary GID, and supplementary groups
+id
+# Output: uid=1001(sconnor) gid=1001(sconnor) groups=1001(sconnor),1002(developers),27(sudo)
+
+# Query another user's identity
+id mydaemon
+
+# Switch user session (su spawns a subshell as the target user)
+su - sconnor
+whoami  # Outputs: sconnor
+
+# Terminate spawned user session and return to previous account
+exit
+whoami  # Outputs: labadmin
 ```
 
 ---
@@ -86,6 +114,26 @@ Permissions are evaluated in strict order: **Owner match? -> Group match? -> Oth
 - `r` (Read = 4): View file contents (`cat`) or list directory contents (`ls`).
 - `w` (Write = 2): Modify file contents or create/delete files inside a directory.
 - `x` (Execute = 1): Run binary/script as a process, or **traverse / enter** a directory (`cd`).
+
+### Rationale for Common Enterprise Permission Masks
+| Numeric | Symbolic | Applies To | Security & Operational Rationale |
+| :---: | :---: | :---: | :--- |
+| **`700`** | `rwx------` | User Private Dir | **Strict Confidentiality**: Only the owner has full read, write, and traversal rights. Group and others have zero permissions. Mandatory for SSH private keys (`~/.ssh`), credentials, and private user workspaces. |
+| **`660`** | `rw-rw----` | Team Shared File | **Collaborative Privacy**: Owner and team group members can read and write the file. Outside unprivileged users cannot read or inspect contents. Standard for internal project configs. |
+| **`664`** | `rw-rw-r--` | Public Internal | **World-Readable**: Owner and group can edit; all other users on the system can read. Never use for passwords, secrets, or internal proprietary data. |
+| **`755`** | `rwxr-xr-x` | Scripts & Dirs | **Standard Executable / Directory**: Owner has full control; group and others can traverse directories or execute scripts. |
+
+### Ownership Assignment (`chown` & `chgrp`)
+```bash
+# Change owner and group simultaneously
+sudo chown sconnor:developers /srv/app/project.conf
+
+# Change group ownership only
+sudo chgrp developers /srv/app/project.conf
+
+# Recursively change ownership on an entire tree
+sudo chown -R sconnor:developers /srv/app/
+```
 
 > [!IMPORTANT]
 > **Directory `x` Traversal Trap**: In Windows, reading a file requires Read permissions. In Linux, to read `/data/finance/budget.xlsx`, you must have **`x` (Execute) permissions on every parent directory** (`/`, `/data`, `/data/finance`) in addition to Read permissions on the file itself!

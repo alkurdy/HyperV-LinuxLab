@@ -9,22 +9,22 @@ Whether you are an enterprise systems administrator transitioning from Windows/V
 ## 🧭 The Single Master Curriculum Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    HYPERV-LINUXLAB UNIFIED LEARNING HUB                         │
-└───────────────────────┬─────────────────────────────────┬───────────────────────┘
-                        │                                 │
-           ┌────────────▼──────────────┐   ┌──────────────▼─────────────┐
-           │ TRACK 1: LINUX MASTERY    │   │ TRACK 2: HYPER-V INTERNALS │
-           │   (21 Levels across 3     │   │   (The Systems Engineer)   │
-           │        Tiers)             │   │    [hyperv-internals]      │
-           └────────────┬──────────────┘   └──────────────┬─────────────┘
-                        │                                 │
-                        ├─ 01-sysadmin-foundations        ├─ 01-prerequisites-and-hardware
-                        │   (Levels 01 - 07 Complete)     ├─ 02-installation-and-removal
-                        │                                 ├─ 03-virtual-networking
-                        ├─ 02-advanced-systems            ├─ 04-storage-differencing-disks
-                        │   (Levels 08 - 14 Roadmap)      ├─ 05-vm-architecture-cloud-init
-                        │                                 └─ 06-vm-lifecycle-and-telemetry
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                             HYPERV-LINUXLAB UNIFIED LEARNING HUB                                 │
+└───────────────────────┬──────────────────────────────────┬───────────────────────────────┬───────┘
+                        │                                  │                               │
+           ┌────────────▼──────────────┐    ┌──────────────▼─────────────┐   ┌─────────────▼────────────┐
+           │ TRACK 1: LINUX MASTERY    │    │ TRACK 2: HYPER-V INTERNALS │   │ TRACK 3: ACADEMIC LABS   │
+           │   (21 Levels across 3     │    │   (The Systems Engineer)   │   │   (University Bridges)   │
+           │        Tiers)             │    │    [hyperv-internals]      │   │        [academic]        │
+           └────────────┬──────────────┘    └──────────────┬─────────────┘   └─────────────┬────────────┘
+                        │                                  │                               │
+                        ├─ 01-sysadmin-foundations         ├─ 01-prerequisites-hardware    └─ uva-it3140
+                        │   (Levels 01 - 07 Complete)      ├─ 02-installation-removal          (DSO Labs 1-8,
+                        │                                  ├─ 03-virtual-networking             OpenTofu, Flask,
+                        ├─ 02-advanced-systems             ├─ 04-storage-differencing           Exam Prep)
+                        │   (Levels 08 - 14 Roadmap)       ├─ 05-vm-architecture-cloud-init
+                        │                                  └─ 06-vm-lifecycle-telemetry
                         └─ 03-expert-sre
                             (Levels 15 - 21 Roadmap)
 ```
@@ -88,6 +88,18 @@ Grounded in canonical operating systems literature (*Linux Command Line Bible*, 
 | **04** | [**Virtual Storage & Differencing Disks**](hyperv-internals/04-storage-and-differencing-disks/README.md) | VHDX block allocation tables, read-only golden masters, 4MB child delta disks, parent-child pointer chains, and sub-5-second atomic resets. | Construct golden master VHDX, spawn child differencing disks, build unguided atomic disk reset utility. |
 | **05** | [**VM Architecture, Generation 2 UEFI & Cloud-Init**](hyperv-internals/05-vm-architecture-and-cloud-init/README.md) | Gen1 vs Gen2 UEFI, Linux Secure Boot (`MicrosoftUEFICertificateAuthority`), dynamic RAM tuning, NoCloud ISO9660 generation (`cidata.iso`), and bypassing Azure `walinuxagent` boot hangs. | Provision Gen2 UEFI VM with Linux Secure Boot, generate and inject Cloud-Init ISO, build unguided unattended node. |
 | **06** | [**VM Lifecycle, Telemetry & Automation**](hyperv-internals/06-vm-lifecycle-and-telemetry/README.md) | Native power states (`Stop-VM -TurnOff`), non-blocking TCP port 22 polling, dual-write metadata (JSON + VM Notes), host startup auto-boot, multi-node orchestration, and worker process termination (`vmwp.exe`). | Capture KVP guest telemetry, persist dual-write metadata, build unguided declarative multi-node cluster orchestrator. |
+
+---
+
+## Academic Bridges: University Coursework Companions
+
+*Bridge university curricula directly to local enterprise virtualization on Hyper-V without cloud expenses or subscription quotas.*
+
+👉 **[Browse All Academic Bridges](academic/README.md)**
+
+| Course | Institution | Curriculum Scope | Companion Guide |
+| :--- | :--- | :--- | :--- |
+| **UVA IT 3140** | University of Virginia | DevSecOps & Cloud Operations (Linux Sysadmin Labs 1–8, OpenTofu IaC, Python Flask microservices, and CI/CD pipelines) | [**UVA IT 3140 Lab Companion**](academic/uva-it3140/README.md) |
 
 ---
 

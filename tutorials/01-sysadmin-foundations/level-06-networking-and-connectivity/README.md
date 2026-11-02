@@ -25,6 +25,47 @@ If you are using `ifconfig`, `netstat`, `route`, or `arp`, **stop immediately**.
 └─────────────────────────┴─────────────────────────┴─────────────────────────┘
 ```
 
+### Hostname Configuration: Ephemeral vs Persistent
+- **`hostname <new-name>`**: Changes the hostname in kernel memory for the current running session only. Upon reboot, the system re-reads the hostname from disk and reverts to the old name.
+- **`hostnamectl set-hostname <new-name>`**: The modern systemd standard. Atomically updates the live running kernel hostname, updates `/etc/hostname` on disk, and alerts system services.
+- **`/etc/hosts` (Static Name Resolution)**: Local file mapping IP addresses to hostnames. Evaluated before DNS queries:
+  ```text
+  127.0.0.1   localhost sysadmin-node
+  192.168.100.10 app-db.internal
+  ```
+
+### The 5-Step Systematic Network Diagnostic Triage Order
+When troubleshooting network outages, never jump straight to pinging external websites. Follow the strict OSI bottom-up triage order:
+1. **Test Local TCP/IP Stack (Loopback)**:
+   ```bash
+   ping -c 3 127.0.0.1
+   ```
+   *Purpose*: Verifies the kernel's internal TCP/IP network protocol stack is functioning without sending packets to any physical network hardware.
+2. **Test Local Interface & Address Assignment**:
+   ```bash
+   ip -br addr
+   ping -c 3 <MY_INTERFACE_IP>
+   ```
+   *Purpose*: Verifies the virtual network adapter driver is bound and has acquired a valid IP configuration.
+3. **Test Default Gateway (Local Broadcast Domain)**:
+   ```bash
+   ip route show | grep default
+   ping -c 3 <GATEWAY_IP>
+   ```
+   *Purpose*: Verifies Layer 2 and Layer 3 reachability across the virtual switch to the host router.
+4. **Test External Routing (Direct IP)**:
+   ```bash
+   ping -c 3 1.1.1.1
+   ```
+   *Purpose*: Verifies NAT routing and external internet reachability, isolating IP routing from DNS problems.
+5. **Test DNS Resolution (Name-to-IP Translation)**:
+   ```bash
+   nslookup google.com
+   # or
+   resolvectl query google.com
+   ```
+   *Purpose*: Verifies DNS nameserver configuration in `/etc/resolv.conf` and cache operation.
+
 ---
 
 ## 2. IP Addressing & Interface Management

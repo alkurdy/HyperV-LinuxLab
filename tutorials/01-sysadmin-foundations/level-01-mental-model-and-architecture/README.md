@@ -139,7 +139,68 @@ cat /etc/passwd | cut -d: -f1 | sort | grep -v "nologin"
 
 ---
 
-## 5. Modern Sysadmin Discovery Cheatsheet
+---
+
+## 5. Environment Variables, Execution Scopes & History Recall
+
+Every running process inherits an execution environment composed of key-value string pairs. Understanding shell vs environment variable scope is fundamental to systems automation and troubleshooting:
+
+### Shell Variables vs Exported Environment Variables
+- **Shell Variable** (`MY_ENV="staging"`): Exists only inside the current active shell process memory. Not accessible to child processes or commands spawned by the shell.
+- **Exported Environment Variable** (`export MY_ENV="staging"`): Placed in the process environment block. When the shell spawns a child process (`fork()` + `execve()`), the child receives a duplicate copy of this environment block.
+- **Child Modification Rule**: A child process can modify its own environment variables, but changes can **never** propagate backward to modify the parent shell's environment.
+
+```bash
+# Set a local shell variable (not exported)
+APP_TIER="frontend"
+bash -c 'echo "Child sees: $APP_TIER"'  # Outputs nothing!
+
+# Export variable to environment
+export APP_TIER="frontend"
+bash -c 'echo "Child sees: $APP_TIER"'  # Outputs: Child sees: frontend
+
+# Inspect all active environment variables
+env
+# Or print specific variable:
+printenv APP_TIER
+
+# Remove variable from environment
+unset APP_TIER
+```
+
+### The `$PATH` Search Variable
+When you type a command like `ls` or `systemctl`, the shell searches directories listed in `$PATH` sequentially from left to right (separated by colons `:`):
+```bash
+echo $PATH
+# Output: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+If an executable is located in a directory not present in `$PATH` (e.g. `/opt/custom/bin`), you must specify the absolute path (`/opt/custom/bin/app`) or prepend the directory to `$PATH`:
+```bash
+export PATH="/opt/custom/bin:$PATH"
+```
+
+### Persistence: `.bashrc` vs `/etc/profile.d/`
+- Variables set via `export` in a terminal vanish when that terminal closes.
+- For **user-specific persistence**: Add `export VAR="value"` to `~/.bashrc` (interactive non-login shells) or `~/.bash_profile` (login shells).
+- For **system-wide persistence**: Create a `.sh` file inside `/etc/profile.d/` (e.g. `/etc/profile.d/company-env.sh`).
+
+### Shell History Recall (`!N`)
+The shell history mechanism stores previous commands in memory and writes them to `~/.bash_history` upon session exit:
+```bash
+# View recent command history with line numbers
+history | tail -n 10
+
+# Re-execute command by history line number (e.g., line 42)
+!42
+
+# Re-execute the immediately preceding command
+!!
+
+# Re-execute the last command starting with 'sys'
+!sys
+```
+
+## 6. Modern Sysadmin Discovery Cheatsheet
 
 | Windows Task | Linux Command | Description |
 | :--- | :--- | :--- |
@@ -218,7 +279,28 @@ Execute the following commands and observe how the Linux kernel and user space i
   # Notice: Size is 0, IO Block is 1024, regular file, zero disk allocation.
   ```
 
-### 4. POSIX Streams & Administrative Baseline Profile
+### 4. Environment Variables & Child Process Isolation
+- **Action**: Test variable inheritance between parent and child processes, test unsetting, and recall via history:
+  ```bash
+  # 1. Define exported variable
+  export LAB_NODE="sysadmin-node-01"
+  env | grep LAB_NODE
+
+  # 2. Verify child process receives the variable
+  bash -c 'echo "Child process sees: $LAB_NODE"'
+
+  # 3. Unset variable and confirm removal
+  unset LAB_NODE
+  env | grep LAB_NODE || echo "Variable successfully unset"
+  ```
+- **System Reaction**:
+  The Linux kernel duplicates the parent's environment pointer during `fork(2)`. When `unset` is called, the shell removes the key from its internal dictionary.
+- **Verification**:
+  ```bash
+  printenv LAB_NODE
+  ```
+
+### 5. POSIX Streams & Administrative Baseline Profile
 - **Action**: Establish an administrative baseline audit file by redirecting standard streams, and configure a global sysadmin profile:
   ```bash
   # Redirect hardware baseline to an audit report
@@ -258,12 +340,14 @@ The operations team requires an automated host telemetry extractor that records 
    - Choose your own log file destination under `/var/log/` (e.g. `/var/log/node-status.log` or `/var/log/host-metrics.log`).
 
 2. **Acceptance Criteria**:
-   - The script must be executable by root and members of the `sudo` group.
+   - The script must be located in a dedicated administrative binary directory (e.g., `/opt/ops/bin` or `/srv/tools/bin`).
+   - The custom binary directory must be added to your administrative account's `$PATH` via `~/.bashrc`, enabling execution by bare name without specifying the full path.
+   - The script must be executable (`chmod 755` or `chmod +x`).
    - When executed, the script must output at least four distinct parameters in `KEY=VALUE` plaintext format:
      - `HOSTNAME=<value>` (Extracted from `/proc` or `hostname`)
      - `KERNEL=<value>` (Extracted from `uname`)
-     - `UPTIME_SEC=<value>` (Total seconds of system uptime)
-     - `MEM_AVAILABLE_MB=<value>` (Current available RAM in megabytes)
+     - `UPTIME_SEC=<value>` (Total seconds of system uptime from `/proc/uptime`)
+     - `MEM_AVAILABLE_MB=<value>` (Current available RAM in megabytes from `/proc/meminfo` or `free -m`)
    - If an error occurs during execution, errors must NOT be swallowed silently; standard output must append to your chosen log file, while standard error is redirected to a companion `.err` file.
 
 3. **Self-Verification**:

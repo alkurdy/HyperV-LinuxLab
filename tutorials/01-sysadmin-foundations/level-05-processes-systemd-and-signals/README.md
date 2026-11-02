@@ -39,14 +39,48 @@ When viewing processes with `ps aux` or `top`, the `STAT` column displays:
 
 ---
 
-## 2. Process Inspection Arsenal
+## 2. Process Inspection Arsenal & Job Control
 
+### `ps aux` vs `ps -ef`: The Two Dialects of Process Auditing
+Systems administrators frequently encounter two command formats for listing processes:
+- **`ps aux` (BSD Syntax)**: Uses un-dashed options. Focuses on resource consumption (`%CPU`, `%MEM`, `VSZ` virtual memory, and `RSS` resident physical RAM). Use this when triaging high resource utilization or finding rogue processes.
+- **`ps -ef` (Standard System V Syntax)**: Uses dashed options (`-e` = every process, `-f` = full listing). Focuses on process ancestry, displaying the Parent Process ID (`PPID`). Use this when tracing parent-child execution lineages or debugging service spawns.
+
+### Searching Process Tables with `grep`
+When searching for a running process:
+```bash
+# Standard search
+ps aux | grep nginx
+
+# Sysadmin Pro-Tip: Exclude the grep command itself from the output
+# Using brackets creates a regex pattern matching 'nginx' that does not match the string '[n]ginx'
+ps aux | grep [n]ginx
+```
+
+### Shell Job Control (Foreground & Background Execution)
+Administrators frequently run long-running commands in the background without tying up their terminal:
+```bash
+# 1. Launch a process in the background (append '&')
+sleep 300 &
+# Output: [1] 2854 (Job 1, PID 2854)
+
+# 2. List all active background jobs in the current shell
+jobs -l
+
+# 3. Bring Job 1 back into the foreground
+fg %1
+
+# 4. Suspend a running foreground command (press Ctrl + Z)
+# The kernel sends SIGSTOP; terminal displays: [1]+ Stopped sleep 300
+
+# 5. Resume the suspended job in the background (sends SIGCONT)
+bg %1
+```
+
+### Process Inspection Quick Reference
 ```bash
 # Display full process tree with PIDs (visually exposes parent-child ancestry)
 pstree -p
-
-# Standard POSIX snapshot: User, PID, %CPU, %MEM, Virtual Size, Resident Size, State, Command
-ps aux | head -n 15
 
 # View process hierarchy in ASCII tree with parent PIDs (PPID)
 ps -ef --forest
@@ -84,6 +118,12 @@ sudo pkill -1 nginx
 # Equivalent systemd command:
 sudo systemctl reload nginx
 ```
+
+---
+
+### Operational Difference: `kill` vs `systemctl stop`
+- **`kill <PID>`**: Delivers an asynchronous, uncoordinated signal directly from the caller to the process. Systemd is not notified prior to delivery. If you kill a managed daemon PID directly, systemd detects the process death as an abnormal exit, flags the unit as failed (or triggers automatic restart if `Restart=always` is configured), and records the signal in `journalctl`.
+- **`systemctl stop <unit>`**: An orchestrated lifecycle shutdown. Systemd invokes the unit's `ExecStop=` directives, notifies dependent units, waits up to `TimeoutStopSec=` for connections to terminate cleanly, and then unmounts the unit's cgroup, leaving the service in a clean `inactive (dead)` state.
 
 ---
 

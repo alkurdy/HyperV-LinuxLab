@@ -37,6 +37,19 @@ In Linux, software is managed via signed cryptographic repositories maintaining 
 | **Find Which Package Owns a File**| `dpkg -S /usr/bin/curl` | `dnf provides /usr/bin/curl` |
 | **List All Installed Packages** | `dpkg -l` | `rpm -qa` |
 
+### RHEL/AlmaLinux: `yum` vs `dnf` Nuances
+On RHEL and AlmaLinux systems, `yum` is a symlink pointing to `dnf` (Dandified YUM), preserving backward compatibility:
+- **`yum check-update`**: Scans repositories for available package updates without modifying local packages. Returns exit code `100` if updates exist, or `0` if packages are fully up to date.
+- **`yum update`**: Updates installed packages to their newest compatible versions while preserving dependencies.
+- **`yum upgrade`**: Similar to update, but also removes obsolete packages (in modern `dnf`, `update` and `upgrade` are functional aliases).
+- **`yum clean all`**: Purges cached repository metadata, headers, and downloaded package files from `/var/cache/yum` or `/var/cache/dnf`. Essential when resolving repository checksum mismatches or broken metadata caches.
+
+### Why Package Management Commands Require Root Privileges
+Running `apt install` or `yum update` without `sudo` immediately terminates with a permission error. This is a foundational security boundary:
+1. **Modifying System Binaries**: Package managers write executable binaries directly into `/usr/bin` and `/usr/sbin`.
+2. **Shared Dynamic Libraries**: Libraries are installed into `/lib`, `/usr/lib`, or `/usr/lib64`. Tampering with shared libraries could subvert all running binaries on the host.
+3. **Database Integrity**: Package managers update system transaction databases located in `/var/lib/dpkg/` or `/var/lib/rpm/`. Unprivileged users must not be permitted to corrupt the system's package state machine.
+
 ---
 
 ## 2. Recurring Task Scheduling: Cron
@@ -74,7 +87,61 @@ echo "0 3 * * * root /usr/local/bin/backup.sh > /var/log/backup.log 2>&1" | sudo
 
 ---
 
-## 3. Defensive Bash Scripting for Sysadmins
+---
+
+## 3. Structured JSON Processing with `jq`
+
+Modern Linux systems administrators interact constantly with APIs, cloud metadata services, and structured configuration files formatted in JSON. The command-line utility `jq` is the standard JSON stream parser.
+
+### Verifying and Installing `jq`
+```bash
+# Check if jq is installed and locate its binary
+which jq
+
+# Check installed version
+jq --version
+
+# Install on Debian/Ubuntu
+sudo apt install -y jq
+
+# Install on RHEL/AlmaLinux
+sudo dnf install -y jq
+```
+
+### Passing Inline JSON via Here-Documents (`<<-EOF`)
+A **here-document** (`<<-EOF ... EOF`) allows passing multi-line string input directly into a command's standard input:
+```bash
+cat <<- 'EOF' | jq .
+{
+  "datacenter": "us-east-hyperv",
+  "employees": [
+    {"name": "Alice", "role": "DevSecOps", "clearance": "TopSecret"},
+    {"name": "Bob", "role": "Sysadmin", "clearance": "Secret"},
+    {"name": "Charlie", "role": "PlatformEngineer", "clearance": "Secret"}
+  ]
+}
+EOF
+```
+
+### The Core `jq` Filter Syntax
+| Filter Expression | Operational Action | Output Example |
+| :--- | :--- | :--- |
+| `.` | Identity filter; pretty-prints incoming JSON | Full formatted JSON document |
+| `.datacenter` | Extracts specific top-level key | `"us-east-hyperv"` |
+| `.employees` | Extracts entire employees array | `[ { "name": ... }, ... ]` |
+| `.employees[]` | Iterates and flattens array elements into individual objects | Individual JSON records |
+| `.employees[].name` | Extracts the `name` attribute from every array element | `"Alice"`, `"Bob"`, `"Charlie"` |
+| `.employees[] \| select(.role == "DevSecOps")` | Evaluates boolean condition and filters matching objects | `{"name": "Alice", "role": "DevSecOps", ...}` |
+| `-r` flag (Raw output) | Strips JSON quotation marks for shell variable assignment | `Alice` instead of `"Alice"` |
+
+### Real-World Sysadmin API Example
+```bash
+# Query an external REST API or cloud endpoint and extract specific values
+LATEST_RELEASE=$(curl -s https://api.github.com/repos/stedolan/jq/releases/latest | jq -r '.tag_name')
+echo "Latest verified jq release tag is: $LATEST_RELEASE"
+```
+
+## 4. Defensive Bash Scripting for Sysadmins
 
 Fragile Bash scripts cause catastrophic outages. When writing infrastructure automation, **always enforce Defensive Strict Mode**:
 
@@ -104,7 +171,7 @@ trap cleanup EXIT
 
 ---
 
-## 4. Text Stream Filtering: `sed` and `awk`
+## 5. Text Stream Filtering: `sed` and `awk`
 
 ### `sed` (Stream Editor - Search and Replace)
 ```bash
