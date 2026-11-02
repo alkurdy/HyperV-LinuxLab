@@ -13,9 +13,7 @@ Here are the **7 critical areas** you will master:
 
 ## 1. Generation 1 vs Generation 2 Virtual Hardware
 
-So you want to create a VM in Hyper-V, and the first question it asks is: "Generation 1 or Generation 2?" What does that mean for modern Linux?
-
-### The Architecture
+Hyper-V provides two virtual hardware models:
 - **Generation 1 (Legacy BIOS)**:
   - Emulates an ancient 1990s motherboard: Intel 440BX chipset, IDE disk controllers, legacy PCI buses, and MBR partition tables.
   - Slow boot times, emulated hardware overhead, cannot boot from SCSI disks.
@@ -26,7 +24,6 @@ So you want to create a VM in Hyper-V, and the first question it asks is: "Gener
 
 ### Native PowerShell Command
 ```powershell
-# Create a pure Generation 2 virtual machine
 Hyper-V\New-VM -Name "linux-node-01" `
     -Generation 2 `
     -MemoryStartupBytes 2GB `
@@ -37,9 +34,6 @@ Hyper-V\New-VM -Name "linux-node-01" `
 
 ## 2. Linux Secure Boot & The Microsoft UEFI Certificate Authority
 
-Now that your VM is Generation 2, you power it on, and it immediately errors: *"Virtual Machine Boot Summary: 1. SCSI DVD (0,0) Failed. 2. SCSI Disk (0,0) The image's hash and certificate are not allowed (DB)."* What happened?
-
-### The Architecture
 Generation 2 VMs enable **Secure Boot** by default to prevent bootkits and untrusted firmware. 
 By default, Hyper-V configures the Secure Boot template to **"Microsoft Windows"**, which only trusts binaries signed by Microsoft's Windows OS key.
 When standard Linux bootloaders (GRUB2, shim) boot, the hypervisor firmware rejects them!
@@ -48,105 +42,76 @@ When standard Linux bootloaders (GRUB2, shim) boot, the hypervisor firmware reje
 To run Ubuntu, Debian, or AlmaLinux with Secure Boot enabled, you must change the firmware template to use the **Microsoft UEFI Certificate Authority** (which includes the third-party Linux shim signing certificate):
 
 ```powershell
-# Configure Linux-compatible Secure Boot template
 Hyper-V\Set-VMFirmware -VMName "linux-node-01" `
     -EnableSecureBoot On `
     -SecureBootTemplate "MicrosoftUEFICertificateAuthority"
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`New-LabVM.ps1`](../../../Public/New-LabVM.ps1) executes this command on every provisioned VM, ensuring modern Linux distros boot securely without turning off hardware verification.
-
 ---
 
 ## 3. CPU Core Sizing & Static vs Dynamic Memory Allocation
 
-Now that the firmware is configured, how should we size CPU and memory?
-
-### The Architecture
 1. **vCPU Count**:
    - Hyper-V defaults to 1 virtual CPU. Modern systemd-based Linux distros run background services (journald, udev, networkd) that benefit dramatically from at least **2 vCPUs**.
 2. **Static Memory vs Dynamic Memory**:
    - Hyper-V supports Dynamic Memory (ballooning). However, Linux memory management and container runtimes (like `containerd` and `kubelet`) rely on predictable physical memory boundaries and can crash or deadlock when memory is dynamically reclaimed.
-   - For Linux lab stability, **static memory is strongly recommended**.
+   - For Linux labs, **disable dynamic memory** to guarantee stable physical allocation:
 
-### Native PowerShell Configuration
 ```powershell
-# Allocate 2 vCPUs and disable dynamic memory ballooning
 Hyper-V\Set-VMProcessor -VMName "linux-node-01" -Count 2
 Hyper-V\Set-VMMemory -VMName "linux-node-01" -DynamicMemoryEnabled $false
 ```
 
 ---
 
-## 4. What Is Cloud-Init? The Universal Cloud Provisioning Standard
+## 4. Cloud-Init Architecture: The NoCloud Datasource
 
-Now that the VM hardware is ready, how does Linux know its hostname, user password, and SSH keys without manual intervention?
+How do cloud providers (AWS, Azure, GCP) configure an operating system on first boot without interactive installers?
 
 ### The Architecture
-**Cloud-Init** is the industry-standard multi-distribution package that handles initial instance configuration in cloud environments (AWS, Azure, GCP, OpenStack).
-On first boot, Cloud-Init queries a **Datasource** to retrieve two configuration files:
-1. **`meta-data`**: Defines instance-specific identity (hostname, instance ID).
-2. **`user-data`**: A YAML document beginning with `#cloud-config` declaring users, SSH public keys, sudo privileges, packages to install, and shell scripts to run.
+Linux cloud images include **Cloud-Init**, an industry-standard initialization framework:
+1. On boot, Cloud-Init probes for a **Datasource**.
+2. In local environments without cloud metadata HTTP endpoints, Cloud-Init uses the **NoCloud** datasource.
+3. It searches attached storage devices for a filesystem labeled **`cidata`** containing two YAML files:
+   - `user-data`: Configures default user accounts, SSH authorized keys, sudoers, and packages.
+   - `meta-data`: Defines the system hostname and instance ID.
 
 ---
 
-## 5. The NoCloud Datasource & Virtual ISO Injection
+## 5. Generating NoCloud ISO Images on Windows
 
-Now, public clouds pass metadata to VMs through internal HTTP metadata endpoints (e.g. `http://169.254.169.254`). But how do we pass this data locally on Hyper-V?
+To pass `user-data` and `meta-data` to a Hyper-V VM, we bundle them into an ISO9660 disk image:
 
-### The Architecture: NoCloud Volume
-Cloud-Init includes a native offline datasource called **NoCloud**:
-- If an optical drive (CD/DVD) or block device with filesystem volume label **`cidata`** is attached to the VM, Cloud-Init mounts it on boot.
-- It reads `/meta-data` and `/user-data` directly from the filesystem!
-
-### Constructing the Files
-1. **`meta-data`**:
-   ```yaml
-   instance-id: linux-node-01
-   local-hostname: linux-node-01
-   ```
-2. **`user-data` (`#cloud-config`)**:
-   ```yaml
-   #cloud-config
-   users:
-     - name: labadmin
-       sudo: ALL=(ALL) NOPASSWD:ALL
-       groups: [sudo, wheel, admin, docker]
-       shell: /bin/bash
-       plain_text_passwd: 'MySecurePassphrase-42'
-       lock_passwd: false
-   ssh_pwauth: true
-   package_update: true
-   packages:
-     - curl
-     - git
-     - jq
-   ```
-
-### Native PowerShell ISO Generation & Mounting
-```powershell
-# Attach the generated cidata.iso to the VM's virtual DVD drive
-Hyper-V\Add-VMDvdDrive -VMName "linux-node-01" -Path "C:\HyperV-LinuxLab\LabVMs\linux-node-01\linux-node-01-cidata.iso"
+```yaml
+# user-data
+#cloud-config
+hostname: my-node-01
+manage_etc_hosts: true
+users:
+  - name: labadmin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    plain_text_passwd: "LabPassword123!"
+    lock_passwd: false
+ssh_pwauth: true
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Public/New-LabCloudInitISO.ps1`](../../../Public/New-LabCloudInitISO.ps1) and [`Private/New-ISO9660Image.ps1`](../../../Private/New-ISO9660Image.ps1) construct standard ISO 9660 filesystems natively in pure PowerShell memory without requiring third-party tools like `mkisofs` or `genisoimage`!
+```yaml
+# meta-data
+instance-id: i-local-lab-01
+local-hostname: my-node-01
+```
 
 ---
 
-## 6. The Azure Agent (`walinuxagent`) Polling Trap
+## 6. Bypassing Azure Linux Agent (`walinuxagent`) Boot Hangs
 
-Now, here is another engineering trap unique to upstream cloud images: why does an Azure cloud VHD take 5 minutes to boot on Hyper-V if unpatched?
-
-### The Architecture: The `ovf-env.xml` Hang
-Official upstream cloud images published by Canonical, Debian, and AlmaLinux for Hyper-V often come pre-configured with the **Azure Linux Guest Agent** (`walinuxagent` / `waagent`):
+Upstream cloud images published for Hyper-V often come pre-configured with the **Azure Linux Guest Agent** (`walinuxagent` / `waagent`):
 1. On boot, `walinuxagent` checks if it is running on Microsoft Hyper-V.
-2. Because it detects Hyper-V, it attempts to read the Azure fabric configuration file (`ovf-env.xml`) from optical media or KVP.
-3. Because our local machine is a local lab—not the public Azure datacenter—the agent hangs the boot process for 5 to 10 minutes polling for the Azure fabric controller!
+2. It attempts to read Azure datacenter fabric configuration (`ovf-env.xml`).
+3. In a local lab, it hangs the boot process for 5 to 10 minutes polling for the Azure fabric controller!
 
-### The Cloud-Init Bootcmd Fix
-To achieve sub-10-second fast boots, we must mask and disable `walinuxagent` in the `bootcmd` section of `#cloud-config`:
+Mask `walinuxagent` in the `bootcmd` section of `#cloud-config` to achieve fast 10-second boots:
 ```yaml
 bootcmd:
   - systemctl mask --now walinuxagent.service waagent.service 2>/dev/null || true
@@ -158,41 +123,96 @@ bootcmd:
 
 ---
 
-## 7. Step-by-Step Complete Manual VM Provisioning Drill
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Now that we understand each layer, let's assemble them into a complete manual build script.
+Run these commands in an elevated PowerShell session to create a test Gen2 virtual machine, configure its firmware and memory, and inspect its synthetic hardware.
 
-### The Drill
-Run this pure PowerShell script to manually build, configure, attach, and power on a Generation 2 VM from raw components:
+### 1. Create Generation 2 VM with Static Memory
+- **Action**: Provision a Generation 2 VM container with 2 vCPUs and static memory:
+  ```powershell
+  $vmName = "drill-gen2-node"
+  $vm = Hyper-V\New-VM -Name $vmName -Generation 2 -MemoryStartupBytes 2GB -SwitchName "Default Switch"
+  Hyper-V\Set-VMProcessor -VMName $vmName -Count 2
+  Hyper-V\Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false
+  ```
+- **System Reaction**:
+  Hyper-V registers the VM in `root\virtualization\v2` and allocates a dedicated VM configuration file (`.vmcx`). Gen2 initializes pure VMBus devices without legacy IDE or PCI bus emulation.
+- **Verification**:
+  ```powershell
+  Hyper-V\Get-VM -Name $vmName | Select-Object Name, Generation, MemoryStartup, DynamicMemoryEnabled
+  ```
 
-```powershell
-$vmName     = "manual-lab-01"
-$diffDisk   = "C:\HyperV-LinuxLab\LabVMs\$vmName\$vmName-diff.vhdx"
-$parentDisk = "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudimg-amd64.vhdx"
-$isoPath    = "C:\HyperV-LinuxLab\LabVMs\$vmName\$vmName-cidata.iso"
+### 2. Configure Linux Secure Boot Firmware
+- **Action**: Switch the UEFI Secure Boot template to the third-party Linux certificate authority:
+  ```powershell
+  Hyper-V\Set-VMFirmware -VMName $vmName -EnableSecureBoot On -SecureBootTemplate "MicrosoftUEFICertificateAuthority"
+  ```
+- **System Reaction**:
+  The hypervisor writes the Microsoft Third-Party UEFI CA public certificates into the virtual NVRAM store of the Gen2 VM. When Linux loads `shimx64.efi` and `grubx64.efi`, the signatures match and boot execution is authorized.
+- **Verification**:
+  ```powershell
+  Hyper-V\Get-VMFirmware -VMName $vmName | Select-Object SecureBoot, SecureBootTemplate
+  ```
 
-# 1. Create Differencing Disk
-New-VHD -ParentPath $parentDisk -Path $diffDisk -Differencing | Out-Null
-
-# 2. Create Gen2 VM
-Hyper-V\New-VM -Name $vmName -Generation 2 -MemoryStartupBytes 2GB -VHDPath $diffDisk -SwitchName "Default Switch" | Out-Null
-
-# 3. Configure Hardware & Firmware
-Hyper-V\Set-VMProcessor -VMName $vmName -Count 2
-Hyper-V\Set-VMMemory -VMName $vmName -DynamicMemoryEnabled $false
-Hyper-V\Set-VMFirmware -VMName $vmName -EnableSecureBoot On -SecureBootTemplate "MicrosoftUEFICertificateAuthority"
-
-# 4. Attach NoCloud ISO
-Hyper-V\Add-VMDvdDrive -VMName $vmName -Path $isoPath
-
-# 5. Boot VM
-Hyper-V\Start-VM -Name $vmName
-Write-Host "[OK] Gen2 VM '$vmName' successfully booted with Cloud-Init NoCloud configuration!"
-```
+### 3. Attach DVD Drive for Cloud-Init Injection
+- **Action**: Attach a virtual DVD drive to the SCSI controller:
+  ```powershell
+  $dvd = Hyper-V\Add-VMDvdDrive -VMName $vmName -ControllerNumber 0 -ControllerLocation 1
+  ```
+- **System Reaction**:
+  Hyper-V allocates a synthetic SCSI optical device handle. On Linux guest boot, the SCSI driver enumerates `/dev/sr0`, allowing Cloud-Init's `DataSourceNoCloud` engine to mount the ISO and parse configuration files.
+- **Verification**:
+  ```powershell
+  Hyper-V\Get-VMDvdDrive -VMName $vmName
+  ```
 
 ---
 
-Now that our VM is running and provisioned, let's explore **[Tutorial 06: VM Lifecycle, Telemetry & Automation](../06-vm-lifecycle-and-telemetry/README.md)** to see how we monitor and automate our lab environment!
+## Part B: Platform Solo Drill (Unguided Mission)
+
+Now author an unguided VM assembly and firmware configuration function without copy-paste code.
+
+### The Mission: Automated Gen2 VM Assembly Engine (`New-PlatformVMContainer`)
+Platform engineering needs a reusable function to assemble a fully compliant Generation 2 Linux VM container ready for storage and cloud-init disk attachment.
+
+1. **Customization**:
+   - Provide custom parameters: `-VMName`, `-MemoryGB`, `-CPUCount`, and `-SwitchName`.
+
+2. **Acceptance Criteria**:
+   - Uses module-qualified cmdlets (`Hyper-V\New-VM`, `Hyper-V\Set-VMFirmware`, etc.).
+   - Explicitly creates Generation 2 virtual hardware.
+   - Enforces Secure Boot using `MicrosoftUEFICertificateAuthority`.
+   - Disables Dynamic Memory and configures the exact specified static memory and vCPU count.
+   - Attaches a virtual DVD drive to SCSI Controller 0.
+   - Cleans up cleanly if an error occurs mid-creation.
+   - Returns a structured `[PSCustomObject]` with properties: `VMName`, `Generation`, `CPUCount`, `MemoryGB`, `SecureBootTemplate`, and `DvdDriveAttached`.
+
+3. **Self-Verification**:
+   Execute this test suite against your function to validate your implementation:
+   ```powershell
+   $testNode = "test-platform-vm"
+   $vmObj = New-PlatformVMContainer -VMName $testNode -MemoryGB 2 -CPUCount 2 -SwitchName "Default Switch"
+
+   # Test 1: Gen2 and Linux CA
+   $genPass = ($vmObj.Generation -eq 2) -and ($vmObj.SecureBootTemplate -eq "MicrosoftUEFICertificateAuthority")
+
+   # Test 2: Hardware sizing
+   $hwPass  = ($vmObj.CPUCount -eq 2) -and ($vmObj.MemoryGB -eq 2)
+
+   if ($genPass -and $hwPass) {
+       Write-Host "[PASS] Gen2 VM assembly engine passed all architectural validations!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] VM container failed generation or firmware validation!" -ForegroundColor Red
+   }
+
+   # Clean up drill VM
+   Hyper-V\Remove-VM -Name $testNode -Force -ErrorAction SilentlyContinue
+   Hyper-V\Remove-VM -Name "drill-gen2-node" -Force -ErrorAction SilentlyContinue
+   ```
+
+---
+
+In **[Tutorial 06: VM Lifecycle, Telemetry & Automation](../06-vm-lifecycle-and-telemetry/README.md)**, we will take our complete platform stack and automate day-2 operations: non-blocking IP discovery, dual-write telemetry, and multi-node cluster orchestration!
 
 ---
 

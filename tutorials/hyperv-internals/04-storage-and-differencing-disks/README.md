@@ -13,21 +13,18 @@ Here are the **7 critical areas** you will master:
 
 ## 1. Virtual Disk Formats: VHD vs VHDX Architecture
 
-So you want to create a virtual hard drive, but Hyper-V gives you two format choices: `.vhd` and `.vhdx`. What's the difference under the hood?
-
-### The Architecture
+Hyper-V provides two format choices: `.vhd` and `.vhdx`:
 - **VHD (Legacy, 2003)**:
-   - Maximum capacity: 2 TB.
-   - 512-byte logical sectors.
-   - Vulnerable to metadata corruption during unexpected power outages or host crashes.
+  - Maximum capacity: 2 TB.
+  - 512-byte logical sectors.
+  - Vulnerable to metadata corruption during unexpected power outages or host crashes.
 - **VHDX (Modern, Gen2)**:
-   - Maximum capacity: 64 TB.
-   - 4 KB logical sectors (matches modern physical NVMe/SSD physical sector layout).
-   - **Internal Log Mechanism**: Writes metadata changes to an internal transaction log before committing them to the virtual disk header. If the host loses power mid-write, the VHDX replays the log upon next mount without disk corruption.
+  - Maximum capacity: 64 TB.
+  - 4 KB logical sectors (matches modern physical NVMe/SSD physical sector layout).
+  - **Internal Log Mechanism**: Writes metadata changes to an internal transaction log before committing them to the virtual disk header. If the host loses power mid-write, the VHDX replays the log upon next mount without disk corruption.
 
 ### Native PowerShell Inspection
 ```powershell
-# Inspect the internal structure of any virtual hard disk
 Hyper-V\Get-VHD -Path "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudimg-amd64.vhdx" | Format-List
 ```
 
@@ -35,12 +32,9 @@ Hyper-V\Get-VHD -Path "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudim
 
 ## 2. Disk Allocation Types: Fixed vs Dynamic vs Differencing
 
-Now that we know VHDX is our format, how does Hyper-V allocate blocks on physical host storage?
-
-### The Architecture
 Hyper-V supports three distinct disk allocation strategies:
 1. **Fixed Disk**:
-   - The entire virtual disk capacity (e.g. 50 GB) is pre-allocated on physical host storage immediately. Fast writes, zero fragmentation, but wastes massive amounts of host disk space.
+   - The entire virtual disk capacity (e.g. 50 GB) is pre-allocated on physical host storage immediately. Fast writes, zero fragmentation, but wastes massive host disk space.
 2. **Dynamic Disk**:
    - Starts small (~2 GB for base OS) and expands physical block allocation dynamically as the guest writes data.
 3. **Differencing Disk (Parent-Child Architecture)**:
@@ -53,16 +47,12 @@ Hyper-V supports three distinct disk allocation strategies:
 
 ## 3. The Golden Base Image: Read-Only Locking Architecture
 
-Now that we understand differencing disks, what happens if something accidentally modifies the parent image?
-
-### The Architecture: Preventing Parent Corruption
-Here is the cardinal rule of differencing storage: **The parent image must NEVER be modified while child differencing disks exist.**
+**The cardinal rule of differencing storage: The parent image must NEVER be modified while child differencing disks exist.**
 If a parent disk is booted, modified, or updated:
 - The parent disk's internal timestamp, geometry, or block tree shifts.
 - Every child differencing disk pointing to it immediately suffers catastrophic filesystem corruption because its relative sector offsets no longer match!
 
 ### Native PowerShell: Locking the Golden Master
-To physically prevent host processes or users from touching golden master images, we mark them read-only:
 ```powershell
 $basePath = "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudimg-amd64.vhdx"
 $file = Get-Item $basePath
@@ -70,76 +60,51 @@ $file.IsReadOnly = $true
 Write-Host "[OK] Base image marked Read-Only. Parent is safe from child corruption."
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`New-LabBaseImage.ps1`](../../../Public/New-LabBaseImage.ps1) sets `IsReadOnly = $true` immediately after verifying the upstream image's SHA256 checksum and completing dynamic VHDX conversion.
-
 ---
 
-## 4. Spawning Child Differencing Disks in Seconds
+## 4. Parent-Child Pointer Chains: The 4MB Delta Secret
 
-Now that our golden master is locked and safe, let's create a child differencing disk for a new lab VM.
+When you create a child differencing disk, Hyper-V does not clone the parent image. It creates a small metadata envelope (~4 MB):
 
-### Native PowerShell Command
-Creating a child differencing disk takes **less than 100 milliseconds** because no data is copied:
-```powershell
-# Spawn a child differencing disk pointing to parent
-$parentPath = "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudimg-amd64.vhdx"
-$childPath  = "C:\HyperV-LinuxLab\LabVMs\k8s-node-01\k8s-node-01-diff.vhdx"
-
-New-VHD -ParentPath $parentPath -Path $childPath -Differencing
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Child Differencing VHDX (~4 MB initial size)                │
+│ - Virtual Size: Matches parent (e.g. 30 GB)                 │
+│ - Physical Size on Host: ~4 MB                              │
+│ - Block Allocation Table: Empty                             │
+│ - Parent Locator Header:                                    │
+│   --> Points to C:\HyperV-LinuxLab\BaseImages\ubuntu.vhdx   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Disk Footprint
-- When created, `k8s-node-01-diff.vhdx` is only **4 MB** in size (just VHDX header and parent locator blocks).
-- Even after full OS boot and package installation, the child disk typically consumes only **150 MB to 350 MB** on your host drive!
-
----
-
-## 5. Instant Sub-5-Second Factory Resets (The Core Secret)
-
-Now, what happens when you break your Linux lab, corrupt your Kubernetes control plane, or mess up an iptables rule? How do you reset to factory clean in under 5 seconds?
-
-### The Architecture: The Differencing Swap
-Traditional lab tools delete the VM, recreate the VM definition, re-download images, and run slow installers.
-`HyperV-LinuxLab` uses the **Atomic Differencing Swap**:
-1. Power off the VM (`Stop-VM -TurnOff`).
-2. Delete the dirty child differencing disk (`Remove-Item child-diff.vhdx`).
-3. Instantly spawn a brand-new, empty child differencing disk with the exact same name pointing to the pristine parent master.
-4. Power on the VM (`Start-VM`).
-
-Because the parent master was never touched, the VM boots back into a pristine OS state in **3 to 5 seconds**!
-
-### Native PowerShell Implementation
 ```powershell
-$vmName = "k8s-node-01"
-
-# 1. Power off
-Hyper-V\Stop-VM -Name $vmName -TurnOff -Force
-
-# 2. Get current disk and parent path
-$hdd = Hyper-V\Get-VMHardDiskDrive -VMName $vmName | Select-Object -First 1
-$vhdInfo = Hyper-V\Get-VHD -Path $hdd.Path
-$parent = $vhdInfo.ParentPath
-
-# 3. Swap disk
-Remove-Item -Path $hdd.Path -Force
-New-VHD -ParentPath $parent -Path $hdd.Path -Differencing | Out-Null
-
-# 4. Boot clean
-Hyper-V\Start-VM -Name $vmName
-Write-Host "[OK] VM '$vmName' reset to factory state in ~3 seconds!"
+Hyper-V\New-VHD -Path "C:\HyperV-LinuxLab\VMs\node-01\Virtual Hard Disks\node-01.vhdx" `
+                -ParentPath "C:\HyperV-LinuxLab\BaseImages\ubuntu-24.04-server-cloudimg-amd64.vhdx" `
+                -Differencing
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-This exact sequence is encapsulated in [`Reset-LabVM.ps1`](../../../Public/Reset-LabVM.ps1), supporting single VMs or pipelined wildcard cluster resets (`Get-LabVM "k8s-*" | Reset-LabVM -Force`).
+---
+
+## 5. Sub-5-Second Atomic VM Factory Resets
+
+How do we reset a completely broken Linux VM back to factory clean state in under 2 seconds?
+
+```
+┌──────────────┐     Delete child delta      ┌──────────────┐
+│  Broken VM   │ ──────────────────────────► │ Re-spawn 4MB │ ──► Clean Factory VM
+│ (4GB writes) │       (0.1 seconds)         │ child disk   │      (Sub-2s boot)
+└──────────────┘                             └──────────────┘
+```
+
+1. Power off the VM: `Hyper-V\Stop-VM -Name "node-01" -TurnOff`
+2. Remove the dirty child `.vhdx` file.
+3. Spawn a clean 4MB child `.vhdx` pointing to the exact same golden parent.
+4. Power on the VM: `Hyper-V\Start-VM -Name "node-01"`
 
 ---
 
-## 6. Differencing Disks vs Checkpoints (Snapshots)
+## 6. Differencing Disks vs Hyper-V Checkpoints (AVHDX)
 
-Now, how does a differencing disk differ from a Hyper-V Checkpoint (Snapshot)?
-
-### The Architecture
 - **Differencing Disks**: Architectural parent-child separation created deliberately upfront for disposable VMs.
 - **Checkpoints (AVHDX)**: Created at runtime. When you create a checkpoint on a running VM (`Checkpoint-VM`):
   1. Hyper-V freezes writes to the active differencing disk.
@@ -147,28 +112,15 @@ Now, how does a differencing disk differ from a Hyper-V Checkpoint (Snapshot)?
   3. All new guest writes flow into the AVHDX.
   4. Merging checkpoints requires the VM to be powered off or Hyper-V to run background live disk merges.
 
-### Native PowerShell Checkpoint Management
-```powershell
-# Create named checkpoint
-Hyper-V\Checkpoint-VM -Name "k8s-node-01" -SnapshotName "pre-k8s-init"
-
-# Revert to checkpoint
-Hyper-V\Restore-VMSnapshot -Name "pre-k8s-init" -VMName "k8s-node-01" -Confirm:$false
-```
-
 ---
 
 ## 7. Storage Capacity Scream Gates: Preventing Host Disk Exhaustion
 
-Now, what happens if your host drive runs out of disk space while a differencing disk is expanding?
-
-### The Architecture: Pause-Critical Storage Failures
 If a Hyper-V host drive hits 0 bytes free while VMs are running:
 - The hypervisor immediately suspends all virtual machines on that drive with state **`Paused-Critical`**.
 - VMs cannot execute, and ungraceful shutdowns can corrupt open database files inside guests.
 
-### Native PowerShell Pre-Flight Gate
-Before launching deployments, evaluate target volume free space:
+Evaluate target volume free space before provisioning:
 ```powershell
 $targetDrive = "C:"
 $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID = '$targetDrive'"
@@ -179,12 +131,109 @@ if ($freeGB -lt 10.0) {
 }
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Private/Assert-LabDiskSpace.ps1`](../../../Private/Assert-LabDiskSpace.ps1) acts as an automated safety gate. If free space is below the required threshold, it prints a high-visibility terminal banner and blocks provisioning unless `-Force` is passed.
+---
+
+## Part A: Guided Architectural Drill (Action & Reaction)
+
+Run these commands in an elevated PowerShell session to create a test golden master, spawn a child differencing disk, inspect parent locators, and test an atomic disk swap.
+
+### 1. Create a Base Template VHDX
+- **Action**: Create a temporary 10GB dynamic base disk and inspect its internal sector topology:
+  ```powershell
+  $testDir = "C:\HyperV-LinuxLab\StorageDrill"
+  New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+
+  $baseVhdPath = "$testDir\base-template.vhdx"
+  $baseVhd = Hyper-V\New-VHD -Path $baseVhdPath -SizeBytes 10GB -Dynamic
+  Hyper-V\Get-VHD -Path $baseVhdPath | Select-Object VhdType, FileSize, Size, LogicalSectorSize, PhysicalSectorSize
+  ```
+- **System Reaction**:
+  Hyper-V formats the VHDX file header, writes the dynamic block allocation table, sets `LogicalSectorSize` to 4096 (4KB native), and leaves unallocated blocks unmapped. Initial physical size on disk is ~4 MB.
+- **Verification**:
+  Confirm `VhdType` is `Dynamic`.
+
+### 2. Lock Base Image as Read-Only
+- **Action**: Mark the base template read-only:
+  ```powershell
+  $file = Get-Item $baseVhdPath
+  $file.IsReadOnly = $true
+  ```
+- **System Reaction**:
+  Windows sets the NTFS/ReFS read-only file attribute. Any process attempting to open the parent disk in `ReadWrite` mode (such as mounting it directly to a VM) will be rejected by the Windows kernel with `Access Denied`.
+- **Verification**:
+  ```powershell
+  (Get-Item $baseVhdPath).IsReadOnly
+  ```
+
+### 3. Spawn Child Differencing Disk & Inspect Parent Locator
+- **Action**: Create a child differencing disk linked to the base template:
+  ```powershell
+  $childVhdPath = "$testDir\child-node.vhdx"
+  $childVhd = Hyper-V\New-VHD -Path $childVhdPath -ParentPath $baseVhdPath -Differencing
+  Hyper-V\Get-VHD -Path $childVhdPath | Select-Object VhdType, FileSize, ParentPath
+  ```
+- **System Reaction**:
+  Hyper-V writes a Differencing VHDX header containing a Parent Locator table pointing to `$baseVhdPath`. Physical size of `$childVhdPath` is ~4 MB.
+- **Verification**:
+  Confirm `VhdType` is `Differencing` and `ParentPath` matches the base template.
+
+### 4. Execute an Atomic Reset Simulation
+- **Action**: Simulate a 0.1-second factory reset by replacing the child disk with a fresh delta:
+  ```powershell
+  $sw = [System.Diagnostics.Stopwatch]::StartNew()
+
+  # Remove dirty child
+  Remove-Item -Path $childVhdPath -Force
+
+  # Spawn fresh child
+  $null = Hyper-V\New-VHD -Path $childVhdPath -ParentPath $baseVhdPath -Differencing
+  $sw.Stop()
+
+  Write-Host "[OK] Atomic disk reset completed in $($sw.Elapsed.TotalSeconds) seconds!" -ForegroundColor Green
+  ```
+- **System Reaction**:
+  Because no guest files had to be copied or formatted, the file system simply created a fresh 4MB header block. Reset execution completes in milliseconds.
 
 ---
 
-Now that our storage and differencing disk architecture is clear, let's explore **[Tutorial 05: VM Architecture, UEFI Gen2 & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md)** to see how VMs initialize without interactive installers!
+## Part B: Platform Solo Drill (Unguided Mission)
+
+Now author an unguided atomic differencing reset utility without copy-paste code.
+
+### The Mission: Atomic Differencing Disk Swapper (`Reset-VirtualDiskDelta`)
+Platform engineering needs a reusable function to atomically reset any child differencing disk back to zero-byte delta state while preserving its parent binding.
+
+1. **Customization**:
+   - Provide parameters for `-ChildVhdPath` and `-Confirm` safety override.
+
+2. **Acceptance Criteria**:
+   - Validates that the targeted VHDX exists and is indeed a `Differencing` disk (rejects `Fixed` or `Dynamic` disks with actionable errors).
+   - Reads the existing `ParentPath` from the disk metadata before deletion.
+   - Verifies the parent image is marked Read-Only.
+   - Deletes the child differencing disk and immediately recreates a fresh differencing disk pointing to the identical parent path.
+   - Returns a structured `[PSCustomObject]` reporting `ChildPath`, `ParentPath`, `ResetDurationMs`, and `NewPhysicalSizeBytes`.
+
+3. **Self-Verification**:
+   Execute this test suite against your reset function to validate your implementation:
+   ```powershell
+   # Test against the drill disk
+   $testChild = "C:\HyperV-LinuxLab\StorageDrill\child-node.vhdx"
+   $resetResult = Reset-VirtualDiskDelta -ChildVhdPath $testChild
+
+   $hasContract = ($resetResult.PSObject.Properties.Name -contains "ParentPath") -and ($resetResult.PSObject.Properties.Name -contains "ResetDurationMs")
+   if ($hasContract -and ($resetResult.NewPhysicalSizeBytes -lt 15MB)) {
+       Write-Host "[PASS] Atomic differencing disk swapper verified!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] Missing properties or reset size exceeded threshold!" -ForegroundColor Red
+   }
+
+   # Clean up drill folder
+   Remove-Item -Path "C:\HyperV-LinuxLab\StorageDrill" -Recurse -Force -ErrorAction SilentlyContinue
+   ```
+
+---
+
+In **[Tutorial 05: VM Architecture, Generation 2 UEFI & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md)**, we will combine our network and storage layers: build a Generation 2 VM with Linux Secure Boot, generate a NoCloud ISO (`cidata.iso`), and inject unattended configuration!
 
 ---
 

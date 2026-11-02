@@ -80,14 +80,14 @@ Grounded in canonical operating systems literature (*Linux Command Line Bible*, 
 
 👉 **[Browse Full Hyper-V Track Hub](hyperv-internals/README.md)**
 
-| # | Tutorial | What You Will Learn | Est. Time |
-| :---: | :--- | :--- | :---: |
-| **01** | [**Prerequisites, Hardware Virtualization & Silicon**](hyperv-internals/01-prerequisites-and-hardware/README.md) | Windows SKU gating (Pro vs Home), CPU VT-x/AMD-V registers, Ring -1 hypervisor masking, SLAT, DEP, memory reservation, and coexistence. | 15 min |
-| **02** | [**Hyper-V Installation, Reboot Lifecycle & Clean Removal**](hyperv-internals/02-installation-and-removal/README.md) | The 4 core layers (`hvix64.sys`, `vmms`), DISM features, pending reboot state machines, 3-point health check, **complete clean uninstallation**, and CBS log debugging. | 20 min |
-| **03** | [**Virtual Networking & Guest IP Routing**](hyperv-internals/03-virtual-networking/README.md) | Default Switch vs Internal NAT switches, WinNAT (`New-NetNat`), synthetic VMBus adapters, guest DHCP routing, and KVP in-memory IP resolution. | 25 min |
-| **04** | [**Virtual Storage & Differencing Disks**](hyperv-internals/04-storage-and-differencing-disks/README.md) | VHDX block allocation tables, read-only golden masters, 4MB child delta disks, parent-child pointer chains, and sub-5-second atomic resets. | 20 min |
-| **05** | [**VM Architecture, Generation 2 UEFI & Cloud-Init**](hyperv-internals/05-vm-architecture-and-cloud-init/README.md) | Gen1 vs Gen2 UEFI, Linux Secure Boot (`MicrosoftUEFICertificateAuthority`), dynamic RAM tuning, NoCloud ISO9660 generation (`cidata.iso`), and bypassing Azure `walinuxagent` boot hangs. | 25 min |
-| **06** | [**VM Lifecycle, Telemetry & Automation**](hyperv-internals/06-vm-lifecycle-and-telemetry/README.md) | Native power states (`Stop-VM -TurnOff`), non-blocking TCP port 22 polling, dual-write metadata (JSON + VM Notes), host startup auto-boot, multi-node orchestration, and worker process termination (`vmwp.exe`). | 25 min |
+| # | Tutorial | Core Hypervisor Concept | Layered Platform Milestone & Solo Drill |
+| :---: | :--- | :--- | :--- |
+| **01** | [**Prerequisites, Hardware Virtualization & Silicon**](hyperv-internals/01-prerequisites-and-hardware/README.md) | Windows SKU gating (Pro vs Home), CPU VT-x/AMD-V registers, Ring -1 hypervisor masking, SLAT, DEP, memory reservation, and coexistence. | Audit silicon readiness, verify Ring -1 masking, build unguided pre-flight hardware gatekeeper. |
+| **02** | [**Hyper-V Installation, Reboot Lifecycle & Clean Removal**](hyperv-internals/02-installation-and-removal/README.md) | The 4 core layers (`hvix64.sys`, `vmms`), DISM features, pending reboot state machines, 3-point health check, **complete clean uninstallation**, and CBS log debugging. | Provision hypervisor stack, evaluate reboot state machine, build unguided role health auditor. |
+| **03** | [**Virtual Networking & Guest IP Routing**](hyperv-internals/03-virtual-networking/README.md) | Default Switch vs Internal NAT switches, WinNAT (`New-NetNat`), synthetic VMBus adapters, guest DHCP routing, and KVP in-memory IP resolution. | Build internal virtual switch, bind gateway, configure WinNAT, build unguided isolated tenant subnet. |
+| **04** | [**Virtual Storage & Differencing Disks**](hyperv-internals/04-storage-and-differencing-disks/README.md) | VHDX block allocation tables, read-only golden masters, 4MB child delta disks, parent-child pointer chains, and sub-5-second atomic resets. | Construct golden master VHDX, spawn child differencing disks, build unguided atomic disk reset utility. |
+| **05** | [**VM Architecture, Generation 2 UEFI & Cloud-Init**](hyperv-internals/05-vm-architecture-and-cloud-init/README.md) | Gen1 vs Gen2 UEFI, Linux Secure Boot (`MicrosoftUEFICertificateAuthority`), dynamic RAM tuning, NoCloud ISO9660 generation (`cidata.iso`), and bypassing Azure `walinuxagent` boot hangs. | Provision Gen2 UEFI VM with Linux Secure Boot, generate and inject Cloud-Init ISO, build unguided unattended node. |
+| **06** | [**VM Lifecycle, Telemetry & Automation**](hyperv-internals/06-vm-lifecycle-and-telemetry/README.md) | Native power states (`Stop-VM -TurnOff`), non-blocking TCP port 22 polling, dual-write metadata (JSON + VM Notes), host startup auto-boot, multi-node orchestration, and worker process termination (`vmwp.exe`). | Capture KVP guest telemetry, persist dual-write metadata, build unguided declarative multi-node cluster orchestrator. |
 
 ---
 

@@ -36,9 +36,6 @@ Get-WindowsOptionalFeature -Online | Where-Object { $_.FeatureName -like "*Hyper
 
 ## 2. Installing Hyper-V: DISM vs Server Manager
 
-Now that we know what components make up the role, let's install them.
-
-### Native PowerShell Command
 On Windows 10/11 desktop editions, optional features are managed by DISM via `Enable-WindowsOptionalFeature`:
 ```powershell
 # Enable the complete Hyper-V stack with all sub-features
@@ -50,137 +47,188 @@ Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRest
 ### The `-NoRestart` Switch
 By passing `-NoRestart`, DISM stages the drivers and servicing packages into the Windows Component Store without immediately forcing a hard reboot, allowing scripts to inspect the result object (`RestartNeeded: True`).
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Install-LabHyperV.ps1`](../../../Public/Install-LabHyperV.ps1) executes this exact DISM command after validating hardware virtualization and Windows SKU compatibility.
-
 ---
 
 ## 3. The Reboot State Machine: Handling Pending Restarts
 
 Now that DISM returned `RestartNeeded: True`, why can't we immediately run `Hyper-V\Get-VM`?
 
-### The Architecture: Staged vs Active Drivers
-When DISM installs a driver like `hvix64.sys`, it registers the driver in the Boot Configuration Data (BCD) store (`hypervisorlaunchtype = auto`). However, the current running kernel cannot dynamically convert itself into a virtualized root partition while active.
+### The Two-Phase Boot Sequence
+Enabling a Type-1 hypervisor requires a fundamental restructuring of the Windows boot chain:
+1. **Phase 1 (Staging)**: DISM copies `hvix64.sys`, `vmswitch.sys`, and servicing files into `%SystemRoot%\System32\drivers` and updates the Boot Configuration Data (BCD) with `hypervisorlaunchtype Auto`.
+2. **Phase 2 (Hardware Handover on Reboot)**: During host restart:
+   - The BIOS/UEFI passes CPU control to the Windows Boot Manager (`bootmgr`).
+   - `bootmgr` loads `hvix64.sys` at Ring -1.
+   - The hypervisor creates the root partition and launches `ntoskrnl.exe` inside it.
+   - The Windows kernel starts the `vmms` service.
 
-A full system restart is **mandatory**. Until that restart happens, the system sits in a **Pending Reboot** state:
-- The `vmms` service cannot start.
-- The `Hyper-V` PowerShell module cannot connect to the WMI virtualization namespace (`root\virtualization\v2`).
+### Detecting Pending Restarts Programmatically
+To prevent scripts from crashing when executed in an un-rebooted state, inspect the 4 authoritative Windows reboot registry keys:
 
-### Native PowerShell Detection
-You can detect if Windows is waiting for a restart using two canonical registry locations:
 ```powershell
-# 1. Component Based Servicing (CBS) check
-$cbsReboot = Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'
+function Test-PendingReboot {
+    $cbs = Get-ChildItem "HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" -ErrorAction SilentlyContinue
+    $wu  = Get-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired" -ErrorAction SilentlyContinue
+    $sm  = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" -Name PendingFileRenameOperations -ErrorAction SilentlyContinue
 
-# 2. Windows Update Reboot Required check
-$wuReboot  = Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
-
-$pending = $cbsReboot -or $wuReboot
-Write-Host "Reboot Required: $pending (CBS: $cbsReboot, WindowsUpdate: $wuReboot)"
+    [bool]($cbs -or $wu -or $sm.PendingFileRenameOperations)
+}
 ```
-
-### Under the Hood in `HyperV-LinuxLab`
-[`Test-LabPrerequisites.ps1`](../../../Public/Test-LabPrerequisites.ps1) inspects these registry keys. If a reboot is pending, it sets `PendingReboot: True` and prompts you to restart rather than attempting to launch VMs and crashing.
 
 ---
 
-## 4. Post-Reboot Verification: Confirming the Hypervisor Is Alive
+## 4. The 3-Point Post-Install Health Check
 
-Now that your machine has rebooted, how do you verify that the hypervisor microkernel actually booted at Ring -1?
+Once rebooted, how do you verify Hyper-V is operational without opening the GUI?
 
-### 3-Point Health Check
-Run these three native commands to verify complete operational health:
+### The 3 Verification Checks
+1. **The Service Check (`vmms`)**: Is the management service running?
+2. **The Hypervisor Check (`hvix64.sys`)**: Is Ring -1 active in hardware?
+3. **The WMI Namespace Check (`root\virtualization\v2`)**: Is the hypervisor CIM schema responsive?
 
 ```powershell
-# 1. Verify Hypervisor Presence in Root Partition
+# Point 1: Service
+$serviceRunning = (Get-Service -Name "vmms" -ErrorAction SilentlyContinue).Status -eq "Running"
+
+# Point 2: Hypervisor in Ring -1
 $hypervisorActive = (Get-CimInstance -ClassName Win32_ComputerSystem).HypervisorPresent
-Write-Host "1. Hypervisor Kernel Active : $hypervisorActive" -ForegroundColor $(if ($hypervisorActive) {'Green'} else {'Red'})
 
-# 2. Verify VMMS Service Status
-$vmms = Get-Service -Name "vmms" -ErrorAction SilentlyContinue
-Write-Host "2. VMMS Service Status      : $($vmms.Status)" -ForegroundColor $(if ($vmms.Status -eq 'Running') {'Green'} else {'Red'})
+# Point 3: WMI v2 Namespace
+$wmiHealthy = $false
+try {
+    $null = Get-CimInstance -Namespace "root\virtualization\v2" -ClassName "Msvm_ComputerSystem" -ErrorAction Stop
+    $wmiHealthy = $true
+} catch {
+    $wmiHealthy = $false
+}
 
-# 3. Verify PowerShell Module Communication
-$testVM = Hyper-V\Get-VM -ErrorAction SilentlyContinue
-Write-Host "3. Hyper-V Module Namespace  : Operational" -ForegroundColor Green
+[PSCustomObject]@{
+    VMMS_Service_Running = $serviceRunning
+    Hypervisor_Active    = $hypervisorActive
+    WMI_Schema_Healthy   = $wmiHealthy
+    HyperV_Operational   = ($serviceRunning -and $hypervisorActive -and $wmiHealthy)
+}
 ```
 
 ---
 
-## 5. Complete Clean Removal: How to Uninstall Hyper-V
+## 5. Complete Clean Removal: Reverting to Bare Metal
 
-Now, what if you want to test the entire installation flow from scratch, or you need to completely remove Hyper-V from your workstation?
+When decommissioning a virtualization host or recovering from CBS corruption, remove the Hyper-V role cleanly:
 
-### Step-by-Step Clean Removal
-
-#### Step 1: Clean Up Running VMs and Virtual Disks
-Before removing the hypervisor, delete any active virtual machines so you don't leave orphaned differencing disks:
 ```powershell
-# Stop and remove all lab VMs
-Hyper-V\Get-VM | Hyper-V\Stop-VM -TurnOff -Force
-Hyper-V\Get-VM | Hyper-V\Remove-VM -Force
-```
-
-#### Step 2: Disable the Hyper-V Feature via DISM
-Execute DISM to remove all 7 Hyper-V components:
-```powershell
-# Disable all Hyper-V feature components without immediate reboot
+# 1. Disable all Hyper-V features
 Disable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All -NoRestart
-```
 
-#### Step 3: Reboot Host
-Restart your PC to allow Windows to reconfigure the kernel and unload the hypervisor:
-```powershell
-Restart-Computer
+# 2. Reset hypervisor launch type in BCD
+bcdedit /set hypervisorlaunchtype off
 ```
 
 ---
 
-## 6. Verifying Hyper-V Is Completely Uninstalled
-
-Now that the system has rebooted after uninstallation, how do you prove that Hyper-V is truly gone and your CPU is running in pure bare-metal mode?
-
-### Post-Removal Verification Script
-Execute this audit script:
-```powershell
-# 1. Verify DISM Feature States are 'Disabled'
-$features = Get-WindowsOptionalFeature -Online | Where-Object { $_.FeatureName -like "*Hyper-V*" }
-$allDisabled = (-not ($features.State -contains "Enabled"))
-Write-Host "1. DISM Features Disabled : $allDisabled" -ForegroundColor $(if ($allDisabled) {'Green'} else {'Red'})
-
-# 2. Verify Hypervisor is NOT Present in Ring -1
-$hypervisorPresent = (Get-CimInstance -ClassName Win32_ComputerSystem).HypervisorPresent
-Write-Host "2. Hypervisor Unloaded     : $(-not $hypervisorPresent)" -ForegroundColor $(if (-not $hypervisorPresent) {'Green'} else {'Red'})
-
-# 3. Verify VMMS Service is Absent or Stopped
-$vmms = Get-Service -Name "vmms" -ErrorAction SilentlyContinue
-Write-Host "3. VMMS Service Stopped    : $(-not $vmms -or $vmms.Status -ne 'Running')" -ForegroundColor Green
-```
-
-When `HypervisorPresent` is `False`, Windows is executing directly on the bare-metal processor without any hypervisor layer.
-
----
-
-## 7. Troubleshooting DISM Error Codes & CBS Logs
-
-Now, what happens if `Enable-WindowsOptionalFeature` fails with a cryptic hex code?
+## 6. Troubleshooting DISM Error Codes & CBS Logs
 
 ### Common Failure Codes & Fixes
 | Error Code | Name | Cause | Resolution |
 | :--- | :--- | :--- | :--- |
-| `0x800f080c` | `ERROR_PATH_NOT_FOUND` | Feature name misspelled or not present in Windows Edition (e.g., trying to enable on Windows Home). | Upgrade Windows edition or verify feature name `Microsoft-Hyper-V-All`. |
-| `0x800f0922` | `CBS_E_INSTALLERS_FAILED` | Secure Boot conflict, firmware VT-x disabled in BIOS, or third-party antivirus blocking driver install. | Enable VT-x in BIOS; temporarily pause third-party security software. |
+| `0x800f080c` | `ERROR_PATH_NOT_FOUND` | Feature name misspelled or not present in Windows Edition (e.g. Windows Home). | Upgrade Windows edition or verify feature name `Microsoft-Hyper-V-All`. |
+| `0x800f0922` | `CBS_E_INSTALLERS_FAILED` | Secure Boot conflict, firmware VT-x disabled in BIOS, or third-party antivirus blocking driver install. | Enable VT-x in BIOS; pause third-party security software. |
 | `0x80070bc9` | `ERROR_FAIL_REBOOT_REQUIRED` | Another Windows update is already pending restart. | Reboot host first, then re-run installation command. |
 
 ### Inspecting Component Based Servicing (CBS) Logs
-If an installation error occurs, inspect the last 50 lines of the DISM servicing log:
 ```powershell
 Get-Content -Path "C:\Windows\Logs\CBS\CBS.log" -Tail 50 | Select-String "Error", "Fail"
 ```
 
 ---
 
-Now that we've got Hyper-V installed, verified, and operational, let's explore **[Tutorial 03: Virtual Networking & Guest IP Routing](../03-virtual-networking/README.md)** to see how VMs get network connectivity.
+## Part A: Guided Architectural Drill (Action & Reaction)
+
+Run these commands in an elevated PowerShell session to inspect the live hypervisor stack and verify service dependencies.
+
+### 1. DISM Feature Hierarchy & State Inspection
+- **Action**: Query the complete hierarchy of Hyper-V features:
+  ```powershell
+  Get-WindowsOptionalFeature -Online | Where-Object { $_.FeatureName -like "*Hyper-V*" } | Select-Object FeatureName, State
+  ```
+- **System Reaction**:
+  DISM queries the Component Based Servicing (CBS) manifest database in `%SystemRoot%\WinSxS`. Notice that `Microsoft-Hyper-V-All` is a parent meta-package containing both `Microsoft-Hyper-V-Hypervisor` (kernel drivers) and `Microsoft-Hyper-V-Tools-All` (user-mode management cmdlets).
+- **Verification**:
+  Confirm that `Microsoft-Hyper-V-Hypervisor` reports `Enabled`.
+
+### 2. Inspect the Pending Reboot State Machine
+- **Action**: Check if any component in the operating system is holding a pending restart:
+  ```powershell
+  $pending = [PSCustomObject]@{
+      CBS_Pending         = [bool](Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending")
+      WU_Pending          = [bool](Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired")
+      SessionManager_Lock = [bool]((Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" -Name PendingFileRenameOperations -ErrorAction SilentlyContinue).PendingFileRenameOperations)
+  }
+  $pending | Format-List
+  ```
+- **System Reaction**:
+  When Windows stages low-level kernel drivers or updates locked system files, it records rename operations in `Session Manager\PendingFileRenameOperations`. The kernel executes these renames during the early Phase 1 boot sequence before any user-mode service starts.
+- **Verification**:
+  If all report `False`, the host is in an active, clean runtime state.
+
+### 3. Validate the 3-Point Health Check
+- **Action**: Execute the 3-point health audit against the local host:
+  ```powershell
+  $vmms = Get-Service -Name "vmms" -ErrorAction SilentlyContinue
+  $hyp  = (Get-CimInstance -ClassName Win32_ComputerSystem).HypervisorPresent
+  $wmi  = $false
+  try {
+      $null = Get-CimInstance -Namespace "root\virtualization\v2" -ClassName "Msvm_ComputerSystem" -ErrorAction Stop
+      $wmi  = $true
+  } catch { $wmi = $false }
+
+  [PSCustomObject]@{
+      VMMS_Status       = $vmms.Status
+      Hypervisor_Active = $hyp
+      WMI_V2_Accessible = $wmi
+  }
+  ```
+- **System Reaction**:
+  `vmms.exe` communicates through the Hyper-V kernel driver via IOCTLs. Querying the `root\virtualization\v2` WMI namespace exercises the full IPC channel between user-mode PowerShell and Ring -1 hypervisor memory structures.
+- **Verification**:
+  All three checks must report positive operational status.
+
+---
+
+## Part B: Platform Solo Drill (Unguided Mission)
+
+Now author an unguided hypervisor health auditor function without copy-paste code.
+
+### The Mission: Hypervisor Lifecycle & Health Auditor
+Write a reusable diagnostic function (`Test-HyperVRoleHealth`) that can run on any Windows machine to validate whether Hyper-V is ready to host production virtual machines.
+
+1. **Customization**:
+   - Provide options to output a human-readable diagnostic summary or a machine-parsable object.
+
+2. **Acceptance Criteria**:
+   - Function checks for administrative elevation.
+   - Checks whether a host reboot is currently pending across CBS, WindowsUpdate, and Session Manager.
+   - Validates that the `vmms` service is installed and in the `Running` state.
+   - Validates that `HypervisorPresent` is `$true`.
+   - Validates that CIM queries against `root\virtualization\v2` succeed without throwing.
+   - Returns a structured `[PSCustomObject]` with properties: `IsReady` (boolean), `RebootPending` (boolean), `ServicesRunning` (boolean), `HypervisorPresent` (boolean), and `Diagnostics` (list of messages).
+
+3. **Self-Verification**:
+   Execute this test suite against your function to validate your implementation:
+   ```powershell
+   $result = Test-HyperVRoleHealth
+
+   $hasContract = ($result.PSObject.Properties.Name -contains "IsReady") -and ($result.PSObject.Properties.Name -contains "RebootPending")
+   if ($hasContract -and ($result.IsReady -is [bool])) {
+       Write-Host "[PASS] Hyper-V role health auditor passed contract validation!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] Missing required health properties!" -ForegroundColor Red
+   }
+   ```
+
+---
+
+In **[Tutorial 03: Virtual Networking & Guest IP Routing](../03-virtual-networking/README.md)**, our running hypervisor will build an Internal Virtual Switch, configure Windows NAT (`New-NetNat`), and route traffic to synthetic VMBus network adapters!
 
 ---
 

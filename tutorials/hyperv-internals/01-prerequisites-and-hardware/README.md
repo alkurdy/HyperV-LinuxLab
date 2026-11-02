@@ -70,76 +70,67 @@ When Hyper-V is enabled and active:
 2. The Windows OS you interact with is demoted to the **Root Partition** (parent virtual machine).
 3. Because the root partition is already running on top of the hypervisor, the CPU's bare-metal VMX/SVM registers are hidden from it!
 
-As a result, standard WMI queries against `Win32_Processor.VirtualizationFirmwareEnabled` report `False` even though virtualization is 100% active and functioning!
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Physical Hardware (CPU, RAM, Motherboard, IOMMU)            │
+├─────────────────────────────────────────────────────────────┤
+│ Ring -1: Hyper-V Microkernel (hvix64.sys)                   │
+├──────────────────────────────┬──────────────────────────────┤
+│ Root Partition (Parent VM)   │ Child Partitions (Guest VMs) │
+│ - Windows Host OS            │ - Ubuntu / Debian Nodes      │
+│ - Hardware Drivers           │ - Direct VMBus synthetic     │
+│ - CPU VT-x MASKED FROM CIM!  │   channels                   │
+└──────────────────────────────┴──────────────────────────────┘
+```
 
-### Native PowerShell Solution
-To check virtualization without falling into this trap, you must check if the hypervisor itself is already present:
+### The Correct Detection Logic
+To determine if your hardware is ready when Hyper-V or WSL2 is active, query `Win32_ComputerSystem.HypervisorPresent`:
+
 ```powershell
-$computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem
-$isHypervisorRunning = $computerSystem.HypervisorPresent
+$cpu = Get-CimInstance -ClassName Win32_Processor | Select-Object -First 1
+$cs  = Get-CimInstance -ClassName Win32_ComputerSystem
 
-if ($isHypervisorRunning) {
-    Write-Host "[OK] Hypervisor is active in Ring -1. Firmware virtualization is definitely enabled!" -ForegroundColor Green
-} else {
-    $firmwareEnabled = (Get-CimInstance -ClassName Win32_Processor).VirtualizationFirmwareEnabled
-    Write-Host "Hypervisor not running. BIOS Virtualization status: $firmwareEnabled"
+$isReady = $cpu.VirtualizationFirmwareEnabled -or $cs.HypervisorPresent
+[PSCustomObject]@{
+    CPU_VT_Enabled    = $cpu.VirtualizationFirmwareEnabled
+    HypervisorPresent = $cs.HypervisorPresent
+    SystemCanHostVMs  = $isReady
 }
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Install-LabHyperV.ps1`](../../../Public/Install-LabHyperV.ps1) evaluates `Win32_ComputerSystem.HypervisorPresent` first. If `True`, it knows the hypervisor is already initialized and skips the raw processor check.
-
 ---
 
-## 4. SLAT (Second Level Address Translation) & DEP
+## 4. Second Level Address Translation (SLAT) & DEP
 
-Now that our CPU can handle guest instructions, how does it handle guest memory without bringing down your host?
+CPU privilege rings alone aren't enough. Modern hypervisors require memory translation hardware.
 
 ### The Architecture
-1. **SLAT (Second Level Address Translation)**:
-   - Intel calls it **EPT** (Extended Page Tables).
-   - AMD calls it **NPT** (Nested Page Tables) or **RVI**.
-   - Traditional virtualization requires the hypervisor to maintain shadow page tables in software. SLAT pushes guest-to-host memory mapping directly into CPU hardware, cutting memory virtualization overhead by up to 80%.
-2. **DEP (Data Execution Prevention)**:
-   - Hardware-enforced No-Execute (`NX`/`XD`) memory pages preventing buffer-overflow exploits from compromising host physical memory.
+In virtualization, memory addresses undergo two translations:
+1. **Guest Virtual Address (GVA)** -> **Guest Physical Address (GPA)** (managed by the guest OS).
+2. **Guest Physical Address (GPA)** -> **Host Physical Address (HPA)** (managed by the hypervisor).
 
-### Native PowerShell Check
-You can check SLAT and DEP support across all cores using Windows `systeminfo.exe`:
-```powershell
-# Parse systeminfo firmware requirements
-systeminfo.exe | Select-String "Hyper-V Requirements", "Virtualization Enabled In Firmware", "Second Level Address Translation", "Data Execution Prevention Available"
-```
+Without hardware assistance, the hypervisor must emulate this mapping using expensive software "shadow page tables". 
+**SLAT** adds hardware memory management unit (MMU) registers to do this translation in silicon:
+- **Intel**: **EPT** (Extended Page Tables).
+- **AMD**: **NPT** (Nested Page Tables) / Rapid Virtualization Indexing (RVI).
+
+Additionally, **DEP (Data Execution Prevention)** or NX-bit (No-Execute) prevents buffer overflow attacks in memory pages. Hyper-V enforces hardware DEP.
 
 ---
 
-## 5. Host Memory & Storage Capacity Planning
+## 5. Host Memory Headroom & Sizing
 
-Now that the processor checks out, let's look at capacity. Virtual machines can easily exhaust physical host resources if you don't calculate sizing before deployment.
+Unlike containers that share the host kernel, virtual machines allocate real physical RAM pages.
 
-### Sizing Principles: The Overcommit Boundary
-- **RAM is Inelastic**: While Hyper-V supports Dynamic Memory, Linux kernels and Kubernetes worker nodes perform unpredictably when memory is ballooned or paged to disk. Static memory is standard in our lab environments.
-- **Rule of Thumb**: Reserve at least **4 GB to 6 GB RAM** for the Windows root partition (your host OS, IDE, and apps).
-- **Core Allocation**: You can safely overcommit CPU cores up to a **2:1 ratio** (e.g., allocating 12 vCPUs across all VMs on a 6-core / 12-thread host CPU) for testing workloads.
+### Sizing Equation for Local Labs
+Your Windows host OS needs dedicated RAM to remain responsive while running background applications, indexing, and management services:
 
-### Native PowerShell Telemetry
-You can query exact host memory and storage metrics using CIM:
-```powershell
-# Host Memory Calculation
-$os = Get-CimInstance -ClassName Win32_OperatingSystem
-$totalRAM_GB = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
-$freeRAM_GB  = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
+$$\text{Usable Lab Memory} = \text{Total Host RAM} - \text{Host Reserved RAM (4 GB)}$$
 
-# Fixed Drive Free Capacity
-$drives = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType = 3" | Select-Object DeviceID,
-    @{Name="FreeGB"; Expression={[math]::Round($_.FreeSpace / 1GB, 2)}},
-    @{Name="TotalGB"; Expression={[math]::Round($_.Size / 1GB, 2)}}
-
-Write-Host "Host RAM : ${freeRAM_GB} GB free of ${totalRAM_GB} GB"
-$drives | Format-Table -AutoSize
-```
-
-### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabHostSystemInfo.ps1`](../../../Private/Get-LabHostSystemInfo.ps1) centralizes these queries across [`Test-LabPrerequisites`](../../../Public/Test-LabPrerequisites.ps1) and [`Test-LabCluster`](../../../Public/Test-LabCluster.ps1), dynamically finding your secondary high-capacity drives (like `D:\`) so labs don't crowd your primary OS partition.
+If your host has:
+- **8 GB RAM**: 4 GB host reserve = 4 GB lab pool (enough for 2-3 minimal Linux nodes).
+- **16 GB RAM**: 4 GB host reserve = 12 GB lab pool (comfortable 3-node Kubernetes cluster).
+- **32 GB+ RAM**: 4 GB host reserve = 28 GB+ lab pool (enterprise multi-distro testbeds).
 
 ---
 
@@ -154,16 +145,6 @@ Modern versions solved this through **WHVP** (Windows Hypervisor Platform):
 - **WSL2**: Runs natively on the Hyper-V virtualization platform. 100% compatible.
 - **VirtualBox (>= 6.1)**: Can run as a client on top of Hyper-V using the `NEM` (Native Execution Manager) engine.
 - **VMware Workstation (>= 15.5)**: Implements Microsoft's WHV APIs, allowing VMware and Hyper-V to run concurrently.
-
-### Native PowerShell Conflict Scan
-Before enabling Hyper-V, you can scan for active third-party hypervisor daemons:
-```powershell
-# Scan running processes and services for legacy hypervisors
-$competingProcesses = Get-Process -Name "VBoxSVC", "VirtualBox*", "vmware*", "vmnetdhcp" -ErrorAction SilentlyContinue
-if ($competingProcesses) {
-    Write-Warning "Detected active VMware / VirtualBox processes. Ensure they are updated to current versions supporting WHVP."
-}
-```
 
 ### Why the `Hyper-V\` Cmdlet Prefix? (PowerShell Module Qualification)
 Throughout this curriculum and module source code, you will frequently see cmdlets written with an explicit `Hyper-V\` prefix (e.g. `Hyper-V\New-VMSwitch`, `Hyper-V\Get-VM`, `Hyper-V\Start-VM`).
@@ -180,31 +161,92 @@ Why is this critical for enterprise systems engineering?
 
 ---
 
-## 7. Step-by-Step Host Readiness Verification Drill
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Now that we understand each requirement, let's run a complete hands-on verification drill.
+Run the following commands in an elevated PowerShell console to audit the physical host and observe how Windows surfaces hypervisor telemetry.
 
-### The Drill
-Run this pure PowerShell scriptblock in an elevated console to generate a comprehensive host pre-flight audit report:
+### 1. Windows Edition & Servicing SKU Entitlement
+- **Action**: Query the operating system caption and the raw registry product `EditionID`:
+  ```powershell
+  $os = Get-CimInstance -ClassName Win32_OperatingSystem
+  $editionId = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').EditionID
+  [PSCustomObject]@{
+      Caption   = $os.Caption
+      EditionID = $editionId
+      Build     = $os.BuildNumber
+  }
+  ```
+- **System Reaction**:
+  The Windows NT kernel checks `EditionID` during DISM feature servicing. If `EditionID` is `Core` or `Home`, the CBS servicing subsystem deliberately masks Hyper-V packages, returning error `0x800f080c` on installation attempts.
+- **Verification**:
+  Confirm your `EditionID` contains `Professional`, `Enterprise`, or `Server`.
 
-```powershell
-$report = [PSCustomObject]@{
-    IsAdmin             = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    WindowsCaption      = (Get-CimInstance Win32_OperatingSystem).Caption
-    WindowsEdition      = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').EditionID
-    HypervisorPresent   = (Get-CimInstance Win32_ComputerSystem).HypervisorPresent
-    LogicalCores        = (Get-CimInstance Win32_Processor).NumberOfLogicalProcessors
-    TotalMemoryGB       = [math]::Round((Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize / 1MB, 1)
-    FreeMemoryGB        = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 1)
-}
+### 2. Ring -1 Hypervisor Presence & CPU Register Masking
+- **Action**: Query processor hardware registers alongside the hypervisor status flag:
+  ```powershell
+  $proc = Get-CimInstance -ClassName Win32_Processor | Select-Object -First 1
+  $cs   = Get-CimInstance -ClassName Win32_ComputerSystem
 
-$report | Format-List
-```
+  [PSCustomObject]@{
+      CPU_Name                = $proc.Name
+      LogicalCores            = $proc.NumberOfLogicalProcessors
+      FirmwareVirtEnabled     = $proc.VirtualizationFirmwareEnabled
+      HypervisorPresent       = $cs.HypervisorPresent
+  }
+  ```
+- **System Reaction**:
+  If `HypervisorPresent` is `$true`, the CPU is running in VMX root mode (Ring -1). In this state, Windows root partition queries to `VirtualizationFirmwareEnabled` may return `$false` because the hypervisor intercepts CPUID instructions and masks bare-metal virtualization flags to isolate the host partition.
+- **Verification**:
+  Either `FirmwareVirtEnabled` or `HypervisorPresent` MUST be `$true`.
 
-### The Output
-- If `IsAdmin` is `True`, `WindowsEdition` is `Professional`/`Enterprise`, and `TotalMemoryGB` >= `8`, you are ready for the next step.
+### 3. Module Collision Defense & Command Precedence
+- **Action**: Test module qualification resolution across active PowerShell modules:
+  ```powershell
+  # Check all available implementations of Get-VM on the host
+  Get-Command -Name Get-VM -All -ErrorAction SilentlyContinue | Select-Object Name, CommandType, Source, Version
+  ```
+- **System Reaction**:
+  PowerShell searches its command resolution path: Aliases -> Functions -> Cmdlets -> External Scripts. If VMware PowerCLI is installed, bare `Get-VM` binds to VMware. Qualifying the call with `Hyper-V\Get-VM` instructs the execution engine to bypass search order and dispatch directly to Microsoft's binary cmdlet.
+- **Verification**:
+  Verify `Hyper-V\Get-VM` resolves to `Microsoft.HyperV.PowerShell.Cmdlets`.
 
-Now that we've got host prerequisites verified, let's move to **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](../02-installation-and-removal/README.md)** to install and configure the hypervisor role.
+---
+
+## Part B: Platform Solo Drill (Unguided Mission)
+
+Now author an unguided host qualification gatekeeper function without copy-paste code.
+
+### The Mission: Enterprise Pre-Flight Hardware Gatekeeper
+Operations requires a reusable pre-flight qualification function (`Assert-PlatformHost`) to audit servers before provisioning virtualization clusters.
+
+1. **Customization**:
+   - Define custom thresholds: Minimum RAM (e.g. `8` or `16` GB) and minimum free storage on your target volume (e.g. `C:` or `D:`, minimum 20 GB).
+
+2. **Acceptance Criteria**:
+   - Function verifies process is elevated as Administrator (throws actionable error if unelevated).
+   - Verifies `EditionID` is a supported Hyper-V SKU (`Professional`, `Enterprise`, `Server*`).
+   - Verifies virtualization support via the dual-check logic (`VirtualizationFirmwareEnabled` OR `HypervisorPresent`).
+   - Verifies available RAM and target drive free space exceed your custom thresholds.
+   - Returns a structured `[PSCustomObject]` with properties: `IsEligible` (boolean), `HostEdition`, `TotalRAM_GB`, `FreeDisk_GB`, and `Blockers` (array of string failure reasons if any).
+
+3. **Self-Verification**:
+   Execute this test suite against your function to validate your implementation:
+   ```powershell
+   # Run your function and test the resulting object contract
+   $audit = Assert-PlatformHost -MinRAMGB 8 -TargetDrive "C:" -MinFreeDiskGB 20
+
+   # Test 1: Returns correct object contract
+   $hasContract = ($audit.PSObject.Properties.Name -contains "IsEligible") -and ($audit.PSObject.Properties.Name -contains "Blockers")
+   if ($hasContract -and ($audit.IsEligible -is [bool])) {
+       Write-Host "[PASS] Pre-flight gatekeeper returned valid contract!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] Missing required properties or invalid types!" -ForegroundColor Red
+   }
+   ```
+
+---
+
+In **[Tutorial 02: Hyper-V Installation, Verification & Clean Removal](../02-installation-and-removal/README.md)**, we will take our qualified bare-metal host and deploy the Hyper-V kernel role, inspect the DISM pending reboot state machine, and validate the 3-point health check!
 
 ---
 

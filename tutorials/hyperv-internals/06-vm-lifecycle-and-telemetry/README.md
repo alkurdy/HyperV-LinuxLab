@@ -13,9 +13,6 @@ Here are the **7 critical areas** you will master:
 
 ## 1. Native Hyper-V Power Lifecycle: Running vs Saved vs Off
 
-So you want to power off or suspend a VM, but what is Hyper-V doing to the guest OS?
-
-### The Architecture
 Hyper-V supports four distinct power operations:
 1. **Graceful Shutdown (`Stop-VM`)**:
    - Sends an ACPI shutdown signal over the VMBus to the guest's Hyper-V Integration Services daemon.
@@ -43,9 +40,6 @@ Hyper-V\Start-VM -Name "linux-node-01"
 
 ## 2. Dynamic IP Discovery & The SSH Readiness Poll
 
-Now that the VM is powered on, how do you know when it is actually ready to accept SSH connections?
-
-### The Architecture
 Powering on a VM is not instantaneous:
 1. The UEFI firmware boots and loads the kernel (`~2 seconds`).
 2. The network interface acquires an IP via DHCP (`~3 seconds`).
@@ -55,7 +49,6 @@ Powering on a VM is not instantaneous:
 If you attempt to SSH immediately when `Start-VM` returns, the connection will be refused because `sshd` hasn't opened port 22 yet.
 
 ### Native PowerShell: Polling for Port 22
-Here is how you write a non-blocking TCP socket poll to detect true SSH readiness:
 ```powershell
 $ip = "192.168.1.150"
 $timeoutSeconds = 30
@@ -68,89 +61,58 @@ while ($stopwatch.Elapsed.TotalSeconds -lt $timeoutSeconds) {
         if ($ar.AsyncWaitHandle.WaitOne(1000, $false) -and $tcp.Connected) {
             $tcp.EndConnect($ar)
             $tcp.Close()
-            Write-Host "[OK] SSH service is ready on ${ip}:22! Connection available." -ForegroundColor Green
+            Write-Host "[OK] SSH port 22 is open on $ip!"
             break
         }
-        $tcp.Close()
     } catch {
-        # Still booting...
+        # Port not listening yet; retry
     }
-    Start-Sleep -Milliseconds 1500
+    Start-Sleep -Milliseconds 500
 }
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Start-LabVM.ps1`](../../../Public/Start-LabVM.ps1) and [`New-LabVM.ps1`](../../../Public/New-LabVM.ps1) run this TCP probe when `-Wait` or `-Start` is specified, ensuring the ASCII connection banner only prints when the VM is genuinely reachable.
-
 ---
 
-## 3. Remembering Credentials & IPs: The Dual-Write Metadata Architecture
+## 3. Dual-Write Metadata Architecture (VM Notes & JSON)
 
-Now, how do you recall passphrases, assigned IPs, and usernames after creating 5 different VMs? Where does that information live?
+How do you persist dynamically generated credentials, assigned IP addresses, and distro information without requiring a centralized database?
 
-### The Architecture: Dual-Write Storage
-Storing lab credentials in the Windows Registry creates orphaned keys and permission hurdles.
-Instead, we use a **Dual-Write Architecture**:
-1. **Primary Store (`metadata.json`)**:
-   - Saved directly into the VM's directory (`<LabStoragePath>\LabVMs\<name>\metadata.json`).
-   - Tracks `Name`, `Distro`, `Username`, `Password`, `IPv4`, `SSH`, and `Profile`.
-   - Lives with the VM assets and is automatically cleaned up when the VM directory is deleted.
-2. **Secondary Store (Hyper-V VM Notes)**:
-   - Written to the native Hyper-V VM `Notes` property (`Set-VM -Notes`).
-   - Appears directly in the Windows Hyper-V Manager GUI lower pane when you click the VM!
+### The Architecture: Dual-Write
+1. **Layer 1: Local JSON Configuration**: Written to `<LabStoragePath>\metadata\<VMName>.json` for fast local PowerShell pipeline queries.
+2. **Layer 2: Hyper-V VM Notes**: Injected directly into the hypervisor's virtual machine object metadata (`Hyper-V\Set-VM -Notes`):
+   - Stored in the VM's `.vmcx` configuration file.
+   - Visible in Hyper-V Manager GUI under the "Notes" tab.
+   - Survives directory renames, folder moves, and machine migrations!
 
-### Native PowerShell Implementation
 ```powershell
-$vmName = "linux-node-01"
-$notes = @"
-Distro: Ubuntu2404
-User: labadmin
-Password: Polar-Jaguar-42
-IPv4: 192.168.1.150
-SSH: ssh labadmin@192.168.1.150
-"@
+$metadata = @{
+    Distro      = "Ubuntu2404"
+    IPv4        = "192.168.1.150"
+    Username    = "labadmin"
+    CreatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+} | ConvertTo-Json -Compress
 
-# Sync to native Hyper-V GUI notes
-Hyper-V\Set-VM -Name $vmName -Notes $notes
+Hyper-V\Set-VM -Name "linux-node-01" -Notes $metadata
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Private/Set-LabVMMetadata.ps1`](../../../Private/Set-LabVMMetadata.ps1) and [`Private/Get-LabVMMetadata.ps1`](../../../Private/Get-LabVMMetadata.ps1) handle dual-writing and retrieval, powering [`Get-LabVM`](../../../Public/Get-LabVM.ps1).
-
 ---
 
-## 4. Host Startup Auto-Boot: Native Hyper-V vs Scheduled Tasks
+## 4. Host Startup Auto-Boot Engines
 
-Now that your lab works, what happens when you restart your workstation? Do you have to manually power on all nodes?
+When your Windows workstation or server reboots after Windows Updates, how do your lab VMs resume automatically?
 
-### The Architecture
-Hyper-V provides two ways to automatically boot virtual machines on host startup:
-1. **Native Hyper-V Automatic Start Action (`AutomaticStartAction = Start`)**:
-   - The Hyper-V host service (`vmms`) powers on the VM as soon as the service starts.
-   - Supports a **startup delay** (`AutomaticStartDelay`) so multiple nodes don't slam your host CPU and storage simultaneously during Windows boot.
-2. **Windows Scheduled Tasks**:
-   - Registers a task triggered `AtStartup` under the `NT AUTHORITY\SYSTEM` account.
-   - Useful in enterprise desktop environments where Windows fast-startup or user logon policies interfere with native Hyper-V auto-start.
-
-### Native PowerShell Configuration
+Hyper-V provides **Automatic Start Actions**:
 ```powershell
-# Configure native Hyper-V auto-start with a 20-second delay
+# Set VM to restart automatically when host boots, with a 15-second delay to let host networking initialize
 Hyper-V\Set-VM -Name "linux-node-01" `
-    -AutomaticStartAction Start `
-    -AutomaticStartDelay 20 `
-    -AutomaticStopAction ShutDown
+    -AutomaticStartAction StartIfRunning `
+    -AutomaticStartDelay 15
 ```
-
-### Under the Hood in `HyperV-LinuxLab`
-[`Enable-LabAutoStart.ps1`](../../../Public/Enable-LabAutoStart.ps1) and [`Disable-LabAutoStart.ps1`](../../../Public/Disable-LabAutoStart.ps1) let you choose `-Mode HyperV`, `-Mode ScheduledTask`, or `-Mode Both`.
 
 ---
 
-## 5. Declarative Multi-Node Cluster Orchestration
+## 5. Declarative Cluster Topology Orchestration
 
-Now, what if you want to stand up an entire 3-node Kubernetes cluster or multi-distro testbed from a single configuration file?
-
-### The Architecture: Declarative JSON Topology
 Rather than running manual provisioning commands for every node, declare your cluster topology in a JSON specification:
 ```json
 {
@@ -165,21 +127,10 @@ Rather than running manual provisioning commands for every node, declare your cl
 }
 ```
 
-### Native PowerShell Orchestration Flow
-1. **Pre-flight Capacity Review**: Sum all node RAM and CPU requirements and verify host capacity before touching Hyper-V.
-2. **Node Name Prefixing**: Prepend `ClusterName` (e.g. `k8s-lab-cp-01`) to isolate clusters from other projects.
-3. **Staged Provisioning**: Provision nodes, applying toolchain packages and Cloud-Init configurations sequentially.
-
-### Under the Hood in `HyperV-LinuxLab`
-[`Test-LabCluster.ps1`](../../../Public/Test-LabCluster.ps1) and [`New-LabCluster.ps1`](../../../Public/New-LabCluster.ps1) parse this JSON, automatically enforce host resource boundaries, and spin up multi-node environments in seconds.
-
 ---
 
 ## 6. Teardown & Clean Garbage Collection
 
-Now that you've finished testing, how do you cleanly destroy the lab without leaving orphaned files on your SSD?
-
-### The Architecture: Safe Cleanup
 Deleting a VM from Hyper-V Manager only removes the VM configuration file from the hypervisor database; **it leaves the virtual hard disks on disk!**
 To avoid ghost files consuming gigabytes of storage:
 1. Turn off the VM.
@@ -187,7 +138,6 @@ To avoid ghost files consuming gigabytes of storage:
 3. Recursively delete the VM's storage folder (`<LabStoragePath>\LabVMs\<name>`).
 4. **Leave parent base images intact** so future VM deployments don't need to re-download 2GB cloud images!
 
-### Native PowerShell Teardown
 ```powershell
 $vmName = "linux-node-01"
 $vmDir  = "C:\HyperV-LinuxLab\LabVMs\$vmName"
@@ -205,15 +155,11 @@ Write-Host "[OK] VM '$vmName' and all child storage cleanly purged."
 
 ---
 
-## 7. Troubleshooting Stuck VMs & Worker Process Crashes
+## 7. Troubleshooting Stuck VMs & Worker Process (`vmwp.exe`)
 
-Now, what happens when a VM gets stuck in `Stopping` or `Saved` state and Hyper-V Manager freezes?
-
-### The Architecture: `vmwp.exe`
 Every running Hyper-V virtual machine is executed by an isolated host worker process named **`vmwp.exe`** (Virtual Machine Worker Process).
 If guest kernel panics or storage deadlocks cause `Stop-VM` to hang, you can kill the specific worker process directly:
 
-### Native PowerShell Emergency Worker Process Kill
 ```powershell
 $vmName = "stuck-vm-01"
 
@@ -233,17 +179,98 @@ if ($vmwp) {
 
 ---
 
-## Conclusion & Next Steps
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-You now understand the complete low-level mechanics of Windows Hyper-V virtualization:
-- Hardware CPU virtualization registers (VT-x/AMD-V) and Ring -1 hypervisor presence.
-- DISM feature installation, pending reboot tracking, and clean uninstallation.
-- Virtual switches, WinNAT routing, and VMBus synthetic adapters.
-- Golden base image protection and sub-5-second differencing resets.
-- Generation 2 UEFI firmware, Linux Secure Boot, and Cloud-Init NoCloud ISO injection.
-- Dynamic KVP telemetry, dual-write metadata persistence, and clean teardown.
+Run these commands in an elevated PowerShell session to inspect worker processes, query in-memory metadata, and verify non-blocking readiness detection.
 
-Armed with this knowledge, you can use the high-level cmdlets in **`HyperV-LinuxLab`** with total confidence, knowing exactly what each command is orchestrating beneath the surface!
+### 1. Map VM Worker Processes (`vmwp.exe`) to Hyper-V GUIDs
+- **Action**: Query running `vmwp.exe` instances and cross-reference them with active Hyper-V VMs:
+  ```powershell
+  $runningVMs = Hyper-V\Get-VM | Where-Object { $_.State -eq 'Running' }
+  $workerProcesses = Get-CimInstance Win32_Process -Filter "Name = 'vmwp.exe'"
+
+  foreach ($vm in $runningVMs) {
+      $guid = $vm.Id.Guid
+      $proc = $workerProcesses | Where-Object { $_.CommandLine -match $guid }
+      [PSCustomObject]@{
+          VMName    = $vm.Name
+          VMGuid    = $guid
+          WorkerPID = $proc.ProcessId
+          MemoryWS  = [math]::Round($proc.WorkingSetSize / 1MB, 1)
+      }
+  }
+  ```
+- **System Reaction**:
+  When a VM powers on, `vmms.exe` launches an isolated `vmwp.exe` instance in the host root partition. The worker process allocates the virtual machine's RAM space, initializes virtual hardware threads, and proxies VMBus channels. Terminating `vmwp.exe` immediately tears down the VM container without crashing the host OS.
+- **Verification**:
+  Each running VM maps to exactly one host `vmwp.exe` PID.
+
+### 2. Dual-Write Metadata Persistence
+- **Action**: Inject structured JSON telemetry into the VM's internal metadata Notes field:
+  ```powershell
+  $targetVM = Hyper-V\Get-VM | Select-Object -First 1
+  if ($targetVM) {
+      $telemetry = @{
+          ManagedBy   = "HyperV-LinuxLab"
+          Environment = "Development"
+          UpdatedUtc  = (Get-Date).ToUniversalTime().ToString("o")
+      } | ConvertTo-Json -Compress
+
+      Hyper-V\Set-VM -Name $targetVM.Name -Notes $telemetry
+      (Hyper-V\Get-VM -Name $targetVM.Name).Notes | ConvertFrom-Json
+  }
+  ```
+- **System Reaction**:
+  Hyper-V stores this string directly inside the VM's `.vmcx` binary configuration file. It is accessible across Hyper-V Manager, PowerShell, and WMI without external file dependencies.
+- **Verification**:
+  Confirm the JSON parses back cleanly from `(Get-VM).Notes`.
+
+---
+
+## Part B: Platform Solo Drill (Grand Track 2 Capstone Mission)
+
+Now author an unguided declarative cluster orchestrator without copy-paste code.
+
+### The Mission: Declarative Multi-Node Cluster Orchestrator (`Deploy-PlatformCluster`)
+Platform engineering requires an automated declarative deployment function that accepts a cluster JSON configuration, enforces pre-flight host headroom, provisions multiple nodes, polls for network readiness, and generates a consolidated status board.
+
+1. **Customization**:
+   - Author a test cluster specification JSON file (e.g. `cluster-spec.json`) defining at least two nodes (e.g. `alpha-node` and `beta-node`) with custom memory, CPU, and roles.
+
+2. **Acceptance Criteria**:
+   - **Stage 1 (Pre-flight Gate)**: Calculates total required RAM across all nodes; verifies host has at least that amount plus 4 GB host reserve.
+   - **Stage 2 (Prefix Isolation)**: Prefixes node names with the cluster name (e.g. `<ClusterName>-<NodeName>`).
+   - **Stage 3 (Provisioning)**: Creates the Gen2 VM containers, attaches differencing disks pointing to your golden base image, configures Linux Secure Boot, and powers them on.
+   - **Stage 4 (Telemetry & Readiness)**: Polls for dynamic IPv4 address acquisition and queries SSH port 22 readiness using non-blocking TCP socket polling.
+   - **Stage 5 (Status Board)**: Injects metadata into `VM.Notes` and outputs a consolidated `[PSCustomObject]` table showing `NodeName`, `Role`, `IPv4`, `State`, and `SSHConnectionString`.
+   - **Stage 6 (Teardown Function)**: Includes a companion `-Destroy` switch that shuts down all cluster nodes, removes VM definitions, and purges child storage while leaving golden master images untouched.
+
+3. **Self-Verification**:
+   Execute this test suite against your cluster deployment engine to validate your implementation:
+   ```powershell
+   # Validate function exists and responds to contract
+   $fn = Get-Command Deploy-PlatformCluster -ErrorAction SilentlyContinue
+   if ($fn -and ($fn.Parameters.ContainsKey("ClusterConfigPath"))) {
+       Write-Host "[PASS] Declarative cluster orchestrator function contract verified!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] Missing Deploy-PlatformCluster function or ClusterConfigPath parameter!" -ForegroundColor Red
+   }
+   ```
+
+---
+
+## Track 2 Completion & Full Systems Engineering Mastery
+
+Congratulations! You have completed **Track 2: Hyper-V Systems Engineering**!
+You now possess a complete, unflinching mental model of:
+- Bare-metal CPU privilege rings and hypervisor presence detection.
+- DISM feature trees and reboot state machine inspection.
+- Kernel WinNAT routing and synthetic VMBus adapters.
+- Golden base image protection and sub-second atomic differencing resets.
+- Generation 2 UEFI virtual architecture and unattended Cloud-Init injection.
+- Dynamic KVP telemetry, process lifecycle control, and declarative multi-node orchestration.
+
+Now, take your local cloud platform and apply it to **[Track 1: Enterprise Linux Systems Engineering](../../01-sysadmin-foundations/README.md)** to master Linux systems administration from the ground up!
 
 ---
 

@@ -13,9 +13,6 @@ Here are the **7 critical areas** you will master:
 
 ## 1. Virtual Switch Types: Default vs Internal vs External vs Private
 
-So you want to create a virtual network, but Hyper-V asks you which switch type to pick. What is the difference?
-
-### The Architecture
 Hyper-V provides four distinct types of virtual switches (`VMSwitch`):
 1. **The Default Switch (Windows 10/11 native)**:
    - Built-in, zero-configuration virtual switch provided by the Windows host.
@@ -30,7 +27,6 @@ Hyper-V provides four distinct types of virtual switches (`VMSwitch`):
    - Pure isolated sandbox. VMs can only talk to other VMs on that exact switch. The host cannot communicate with the VMs, and VMs cannot reach the internet.
 
 ### Native PowerShell Check
-Query all virtual switches configured on your host:
 ```powershell
 Hyper-V\Get-VMSwitch | Select-Object Name, SwitchType, NetAdapterInterfaceDescription
 ```
@@ -39,20 +35,9 @@ Hyper-V\Get-VMSwitch | Select-Object Name, SwitchType, NetAdapterInterfaceDescri
 
 ## 2. The Windows NAT Engine (WinNAT) & Custom Internal Switches
 
-Now that we understand switch types, why do we often prefer an Internal NAT Switch for lab clusters?
-
-### The Architecture: WinNAT
 When running multi-node clusters (like Kubernetes or multi-distro testbeds), you don't want your local home Wi-Fi router handing out random lease IPs or blocking inter-node traffic. 
-Windows includes **WinNAT** (Windows Network Address Translation), a kernel-mode NAT router that forwards traffic from internal VM subnets through your host's internet connection.
+Windows includes **WinNAT** (Windows Network Address Translation), a kernel-mode NAT router that forwards traffic from internal VM subnets through your host's internet connection:
 
-### Native PowerShell: Building an Internal NAT Network
-
-> [!NOTE]
-> **Why `Hyper-V\New-VMSwitch` instead of just `New-VMSwitch`? (Module Qualification)**  
-> In PowerShell, prefixing a command with its module name (`<ModuleName>\<CmdletName>`) is known as **Module Qualification**.  
-> This protects against **command name collisions**. If you have third-party virtualization modules installed (such as **VMware PowerCLI**), they export identically named cmdlets like `Get-VM`, `New-VM`, and `New-VMSwitch`. If both modules are loaded, typing a bare `Get-VM` runs VMware's cmdlet and fails with: `You are not currently connected to any servers`. Explicitly writing `Hyper-V\New-VMSwitch` and `Hyper-V\Get-VM` instructs the PowerShell parser to route execution directly to Microsoft's native Hyper-V engine, ensuring your scripts run deterministically regardless of what other virtualization tools exist on the host.
-
-Here is how you manually build a dedicated `192.168.100.0/24` lab network from scratch:
 ```powershell
 # 1. Create the Internal Virtual Switch
 $switch = Hyper-V\New-VMSwitch -Name "LabSwitch" -SwitchType Internal
@@ -65,124 +50,152 @@ New-NetIPAddress -InterfaceIndex $adapter.ifIndex -IPAddress "192.168.100.1" -Pr
 New-NetNat -Name "LabNAT" -InternalIPInterfaceAddressPrefix "192.168.100.0/24"
 ```
 
-### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabDefaultSwitch.ps1`](../../../Private/Get-LabDefaultSwitch.ps1) automatically resolves your active virtual switch. If you don't specify a custom switch name, it safely binds to the native `Default Switch`.
+---
+
+## 3. Synthetic vs Emulated Network Adapters (VMBus vs Legacy)
+
+When creating virtual network cards, Hyper-V offers two fundamentally different hardware architectures:
+
+| Feature | Synthetic Network Adapter (Default) | Legacy Network Adapter (Generation 1 only) |
+| :--- | :--- | :--- |
+| **Driver Model** | VMBus synthetic device (`hv_netvsc`) | Emulated Intel 21140 10/100 Mbps NIC |
+| **Privilege Rings** | Direct Ring 0 memory shared bus | Software CPU trap emulation |
+| **Throughput** | 10 Gbps - 40 Gbps+ (Bus speed) | Capped at ~100 Mbps |
+| **Generation** | Gen1 and Gen2 | Gen1 only (PXE boot on Gen1) |
+
+Modern Linux kernels include upstream enlightened drivers for synthetic VMBus adapters (`hv_netvsc`). Never use legacy emulated adapters for Linux guests.
 
 ---
 
-## 3. Synthetic vs Emulated Network Adapters
+## 4. Key-Value Pair (KVP) In-Memory Telemetry Exchange
 
-Now that our virtual switch is ready, how does the VM attach to it?
+How does the Windows host discover the dynamic IP address assigned to a Linux guest without logging into it via SSH?
 
-### The Architecture: VMBus vs Emulated NIC
-Hyper-V provides two virtual network adapter types:
-1. **Synthetic Network Adapter (`NetworkAdapter`)**:
-   - Uses the high-speed **VMBus** virtualization channel.
-   - Requires Hyper-V Integration Services drivers in the guest OS (built directly into the upstream Linux kernel via `hv_netvsc`).
-   - Achieves near-wire-speed 10Gbps+ throughput with minimal CPU overhead.
-2. **Legacy / Emulated Adapter**:
-   - Emulates a physical DEC 21140 10/100 Mbps NIC. Very slow, high CPU overhead, only used for Gen1 PXE boot.
+### The Architecture: Hyper-V Data Exchange (KVP)
+Hyper-V includes a hardware memory ring-buffer mechanism called **Key-Value Pair (KVP) Data Exchange**:
+1. The guest Linux kernel driver (`hv_utils`) reads network interfaces (`eth0`) inside the VM.
+2. The guest KVP daemon writes the IP configuration into a designated shared memory window exposed by the hypervisor.
+3. The hypervisor copies these pairs into the root partition's WMI database (`root\virtualization\v2`).
+4. PowerShell reads the guest IP address straight from host RAM:
 
-### Native PowerShell Attachment
-Attaching a synthetic adapter to a VM:
 ```powershell
-# Connect a VM to the virtual switch
-Hyper-V\Connect-VMNetworkAdapter -VMName "k8s-node-01" -SwitchName "Default Switch"
-
-# Inspect adapter configuration
-Hyper-V\Get-VMNetworkAdapter -VMName "k8s-node-01" | Select-Object VMName, SwitchName, MacAddress, Status
+$vm = Hyper-V\Get-VM -Name "my-node"
+$adapter = Hyper-V\Get-VMNetworkAdapter -VM $vm
+$adapter.IPAddresses
 ```
 
 ---
 
-## 4. How Cloud-Init Discovers and Configures the Network
+## 5. WinNAT Limitations & Single-Subnet Constraints
 
-Now that the VM is connected to the switch, how does the Linux guest know how to ask for an IP address?
+WinNAT in client Windows (Windows 10/11) has one architectural constraint:
+- **Client Windows supports only ONE active WinNAT instance simultaneously.**
+- If Docker Desktop or WSL2 has created a NetNat instance, creating a second `New-NetNat` will throw an error: `The parameter is incorrect`.
 
-### The Architecture: Netplan & Systemd-Networkd
-When a modern Linux guest boots (Ubuntu, Debian, or AlmaLinux):
-1. The kernel loads `hv_netvsc`, creating network interface `eth0`.
-2. Cloud-Init's local stage reads default networking directives or lets the distribution's network daemon take over:
-   - Ubuntu: **Netplan** (`/etc/netplan/50-cloud-init.yaml`).
-   - Debian: **systemd-networkd** or `/etc/network/interfaces`.
-   - AlmaLinux: **NetworkManager** (`nmcli` / keyfiles).
-3. The guest sends a DHCPDISCOVER packet across the VMBus to the virtual switch.
-4. The Hyper-V host DHCP service replies with an assigned IPv4 address, default gateway, and DNS servers.
-
----
-
-## 5. Discovering Guest IPs via KVP (Key-Value Pair) Data Exchange
-
-Now that the guest has an IP address, how does the Windows host discover what it is without logging in?
-
-### The Architecture: Hyper-V Data Exchange Service
-In traditional virtualization, you have to run slow ARP scans or inspect DHCP leases to find a VM's IP address.
-Hyper-V solves this with **KVP (Key-Value Pair) Data Exchange**:
-- The guest Linux kernel runs `hv_kvp_daemon` (or the integration services driver).
-- The guest writes its assigned network IP addresses into kernel KVP registers.
-- The Hyper-V host reads these registers directly over VMBus memory exchange without generating any network traffic!
-
-### Native PowerShell Discovery
 ```powershell
-# Query guest IP directly through Integration Services
-$adapter = Hyper-V\Get-VMNetworkAdapter -VMName "k8s-node-01"
-$ipv4 = $adapter.IPAddresses | Where-Object {
-    $_ -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$' -and $_ -notlike '169.254*' -and $_ -ne '127.0.0.1'
-}
-Write-Host "Discovered Guest IPv4: $ipv4"
-```
-
-### Under the Hood in `HyperV-LinuxLab`
-[`Private/Get-LabVMIPAddress.ps1`](../../../Private/Get-LabVMIPAddress.ps1) encapsulates this logic with stopwatch polling, waiting up to 45 seconds for cloud-init to finish bringing up the network before presenting your ready-to-use SSH connection string.
-
----
-
-## 6. Cross-VM Cluster Communication (Multi-Node Labs)
-
-Now that individual VMs can reach the internet, how do multi-node clusters (like Kubernetes) communicate among themselves?
-
-### The Architecture: Flat L2 Virtual Switches
-When multiple VMs attach to the same Hyper-V virtual switch (e.g. `k8s-cp-01`, `k8s-worker-01`, `k8s-worker-02`):
-- The virtual switch behaves as an unmanaged Layer-2 Ethernet switch.
-- Nodes broadcast ARP requests directly to each other without touching your host's physical network adapter.
-- Packet latency between nodes is sub-millisecond (in-memory memory copying over VMBus).
-
-### Native PowerShell Verification
-```powershell
-# Verify all nodes in a cluster are on the same virtual switch
-Hyper-V\Get-VM -Name "k8s-*" | Hyper-V\Get-VMNetworkAdapter | Format-Table VMName, SwitchName, IPAddresses
+# Inspect active NAT instances across the host
+Get-NetNat
 ```
 
 ---
 
-## 7. Troubleshooting Virtual Network Drops & WinNAT Collisions
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Now, what happens when a VM gets stuck with an APIPA (`169.254.x.x`) address, or can't reach the internet?
+Run these commands in an elevated PowerShell session to inspect virtual network switches and observe how Windows configures internal routing.
 
-### Common Issues & Diagnostic Commands
+### 1. Inspect Virtual Switches & Synthetic Host Adapters
+- **Action**: Query the existing virtual switch configurations and their corresponding host adapters:
+  ```powershell
+  $switches = Hyper-V\Get-VMSwitch
+  $adapters = Get-NetAdapter -Name "vEthernet*" -ErrorAction SilentlyContinue
 
-1. **WinNAT Subnet Conflict**:
-   - WinNAT only supports **one** NAT prefix per host. If Docker Desktop, WSL2, or a manual `New-NetNat` already created a NAT prefix, new NAT switches will fail.
-   - *Fix*: Check active NAT configurations:
-     ```powershell
-     Get-NetNat
-     ```
-2. **Missing Host Virtual Adapter**:
-   - If the `vEthernet` adapter on the host is disabled in Network Connections, VMs cannot route through the host gateway.
-   - *Fix*: Re-enable the interface:
-     ```powershell
-     Get-NetAdapter -Name "vEthernet*" | Enable-NetAdapter
-     ```
-3. **Host Firewall Blocking ICMP/SSH**:
-   - Windows Defender Firewall might block incoming SSH or ping packets from guest subnets.
-   - *Fix*: Allow port 22 and ICMP on host virtual network adapters:
-     ```powershell
-     Get-NetFirewallRule -DisplayName "*SSH*"
-     ```
+  [PSCustomObject]@{
+      TotalSwitches    = $switches.Count
+      SwitchNames      = ($switches.Name -join ", ")
+      HostAdapters     = ($adapters.Name -join ", ")
+  }
+  ```
+- **System Reaction**:
+  When Hyper-V initializes an internal or external switch, the Windows kernel network stack creates a synthetic miniport adapter named `vEthernet (<SwitchName>)`. The miniport driver (`vmswitch.sys`) binds to the NDIS protocol stack.
+- **Verification**:
+  Verify the existence of the `Default Switch` or custom lab switch.
+
+### 2. Inspect the WinNAT Translation Engine
+- **Action**: Query active Windows Network Address Translation (NAT) bindings:
+  ```powershell
+  Get-NetNat | Select-Object Name, InternalIPInterfaceAddressPrefix, Active
+  ```
+- **System Reaction**:
+  The WinNAT driver intercepts IP packets arriving on internal virtual switch interfaces whose destination is outside the local subnet. It replaces the guest VM's private source IP with the host's IP address, dynamically maps a source TCP/UDP port, and updates its in-memory translation table.
+- **Verification**:
+  Confirm whether an active NAT prefix is registered on the host.
+
+### 3. KVP Guest IP Discovery Drill
+- **Action**: Query a running VM's network adapter for dynamic IP addresses without SSH:
+  ```powershell
+  $runningVM = Hyper-V\Get-VM | Where-Object { $_.State -eq 'Running' } | Select-Object -First 1
+  if ($runningVM) {
+      $ipData = (Hyper-V\Get-VMNetworkAdapter -VM $runningVM).IPAddresses
+      [PSCustomObject]@{
+          VMName      = $runningVM.Name
+          IPv4Address = ($ipData | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' } | Select-Object -First 1)
+      }
+  } else {
+      Write-Host "No active VM currently running; will verify during VM provisioning." -ForegroundColor Yellow
+  }
+  ```
+- **System Reaction**:
+  Hyper-V queries the `Msvm_KvpExchangeDataItem` WMI instances populated by the guest kernel's `hv_utils` module, retrieving the IP without invoking guest user-space credentials.
 
 ---
 
-Now that our virtual network and IP discovery are solid, let's explore **[Tutorial 04: Virtual Storage & Differencing Disks](../04-storage-and-differencing-disks/README.md)** to see how we achieve sub-5-second VM resets!
+## Part B: Platform Solo Drill (Unguided Mission)
+
+Now author an unguided virtual network provisioning and cleanup utility without copy-paste code.
+
+### The Mission: Isolated Tenant NAT Switch Engine
+Cloud platforms require the ability to dynamically stand up isolated internal virtual subnets for testing and cleanly tear them down.
+
+1. **Customization**:
+   - Choose a unique Switch Name (e.g. `TenantSwitch-Dev` or `IsolatedLabSwitch`).
+   - Choose a custom private CIDR prefix (e.g. `10.220.0.0/24` or `172.28.10.0/24`) and assign the `.1` address as the gateway.
+
+2. **Acceptance Criteria**:
+   - Stand up:
+     1. Creates an Internal Virtual Switch using module qualification (`Hyper-V\New-VMSwitch`).
+     2. Identifies the generated `vEthernet (<SwitchName>)` host adapter.
+     3. Assigns the `.1` gateway IP address with proper prefix length.
+     4. Creates a `NetNat` object mapping the chosen subnet CIDR.
+   - Clean Teardown:
+     1. Removes the `NetNat` object.
+     2. Removes the `VMSwitch` cleanly.
+     3. Verifies zero orphaned virtual adapters remain.
+
+3. **Self-Verification**:
+   Execute this test suite against your network deployment to validate your implementation:
+   ```powershell
+   # Replace with your chosen switch name and CIDR
+   $testSwitch = "TenantSwitch-Dev"
+   $testPrefix = "10.220.0.0/24"
+
+   # Test 1: VMSwitch exists and is Internal
+   $sw = Hyper-V\Get-VMSwitch -Name $testSwitch -ErrorAction SilentlyContinue
+   $swPass = ($sw -and $sw.SwitchType -eq 'Internal')
+
+   # Test 2: NetNat active for prefix
+   $nat = Get-NetNat | Where-Object { $_.InternalIPInterfaceAddressPrefix -eq $testPrefix }
+   $natPass = ($nat -ne $null)
+
+   if ($swPass -and $natPass) {
+       Write-Host "[PASS] Tenant NAT network successfully provisioned and verified!" -ForegroundColor Green
+   } else {
+       Write-Host "[FAIL] Virtual switch or NetNat prefix failed verification!" -ForegroundColor Red
+   }
+   ```
+
+---
+
+In **[Tutorial 04: Virtual Storage & Differencing Disks](../04-storage-and-differencing-disks/README.md)**, we will build our high-performance storage layer: create read-only golden masters, spawn 4MB child delta disks, and execute sub-second atomic resets!
 
 ---
 

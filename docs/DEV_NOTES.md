@@ -272,4 +272,28 @@ Available distributions in `New-LabBaseImage`:
   - `tutorials/01-sysadmin-foundations/level-07-automation-bash-and-package-lifecycle/README.md`
 - **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
 
+### [2026-11-02T11:06:00-05:00] PHASE 15: Track 2 (Hyper-V Internals) Layered Architecture & Platform Solo Drills
+- **Pedagogical Redesign**:
+  - Restructured Track 2 into a continuous platform engineering journey building a custom local cloud engine on Windows bare metal.
+  - Formatted all 6 tutorials into two-part learning architecture:
+    - **Part A (Guided Architectural Drill)**: Explicit **Action & System Reaction** sections explaining how the Windows NT kernel, Hyper-V microkernel (`hvix64.sys`), VMBus, or `vmms` operates beneath the surface.
+    - **Part B (Platform Solo Drill)**: Unguided missions with customizable parameters (switch names, subnet CIDRs, disk labels, VM names), explicit acceptance criteria, zero copy-paste code answers, and automated self-verification validator scripts.
+  - Layered progression across all 6 tutorials:
+    - Tutorial 01: Audit host silicon, Ring -1 masking, build unguided pre-flight hardware gatekeeper.
+    - Tutorial 02: Provision hypervisor stack, inspect reboot state machine, build unguided role health auditor.
+    - Tutorial 03: Internal virtual switches, gateway binding, WinNAT routing, build unguided isolated tenant subnet.
+    - Tutorial 04: Golden master VHDX, 4MB differencing deltas, build unguided atomic disk reset utility.
+    - Tutorial 05: Gen2 UEFI, Linux Secure Boot (`MicrosoftUEFICertificateAuthority`), Cloud-Init ISO, build unguided unattended node.
+    - Tutorial 06: KVP guest telemetry, dual-write state, build unguided declarative multi-node cluster orchestrator.
+- **Files Modified**:
+  - `tutorials/README.md`
+  - `tutorials/hyperv-internals/README.md`
+  - `tutorials/hyperv-internals/01-prerequisites-and-hardware/README.md`
+  - `tutorials/hyperv-internals/02-installation-and-removal/README.md`
+  - `tutorials/hyperv-internals/03-virtual-networking/README.md`
+  - `tutorials/hyperv-internals/04-storage-and-differencing-disks/README.md`
+  - `tutorials/hyperv-internals/05-vm-architecture-and-cloud-init/README.md`
+  - `tutorials/hyperv-internals/06-vm-lifecycle-and-telemetry/README.md`
+- **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
 
