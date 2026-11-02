@@ -1,10 +1,10 @@
 # Level 02: Identity Management, Users, Groups & POSIX Permissions
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Linux Cookbook* (Schroder) & *CompTIA Linux+ Study Guide*.
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Linux Cookbook* (Schroder) & *CompTIA Linux+ Study Guide*.
 
 ---
 
-## 🎯 Objective
+## Objective
 Master the Linux identity and security model from a Windows/Active Directory perspective. Understand local account databases, sudo privilege escalation architecture, standard POSIX octal/symbolic permissions, special bits (SUID/SGID/Sticky), and POSIX Access Control Lists (ACLs).
 
 ---
@@ -49,216 +49,224 @@ sudo useradd -r -s /usr/sbin/nologin -d /var/lib/mydaemon mydaemon
 # Create a standard human developer account with auto-created home dir and bash shell
 sudo useradd -m -s /bin/bash -c "Sarah Connor - Systems Lead" sconnor
 
-# Set account password
-sudo passwd sconnor
+# Set or reset password
+echo "sconnor:SecurePassword123!" | sudo chpasswd
 
-# Create a secondary group for engineering
-sudo groupadd engineering
-
-# Add sconnor to engineering group (Supplementary: -aG = Append Group)
-# WARNING: Omitting '-a' removes the user from all other supplementary groups!
-sudo usermod -aG engineering sconnor
-
-# Verify effective UID and GIDs
-id sconnor
-# uid=1001(sconnor) gid=1001(sconnor) groups=1001(sconnor),1002(engineering)
-```
-
-### Password Aging & Account Locking (Equivalent to Windows Account Policies)
-```bash
-# View password expiration and aging policy
-sudo chage -l sconnor
-
-# Force password change at next interactive login
-sudo chage -d 0 sconnor
-
-# Lock account immediately (prepends '!' to password hash in /etc/shadow)
-sudo usermod -L sconnor
-
-# Unlock account
-sudo usermod -U sconnor
+# Assign supplementary groups
+sudo usermod -aG sudo,docker sconnor
 ```
 
 ---
 
-## 3. Privilege Escalation: The Sudo Architecture
+## 3. Sudo Architecture & Privilege Escalation (`visudo`)
 
-In Windows, administrators belong to the `BUILTIN\Administrators` group and use UAC (User Account Control).
-In Linux, administrators log in as unprivileged users and escalate privileges on demand via `sudo` (SuperUser DO).
+In Windows, you right-click and choose *Run as Administrator* (UAC token split).
+In Linux, administrators log in as unprivileged accounts and prefix commands with `sudo` (SuperUser DO).
 
-### The Sudo Configuration Hierarchy
-- The master configuration file is `/etc/sudoers`.
-- **CRITICAL RULE**: Never edit `/etc/sudoers` directly with `nano` or `vim`. Always use `visudo`. `visudo` locks the file and parses syntax before saving. A single typo in `/etc/sudoers` will lock everyone out of root privileges!
-- **Drop-in Configuration**: Place custom administrative grants in `/etc/sudoers.d/<filename>`.
+### The Sudoers File (`/etc/sudoers` & `/etc/sudoers.d/`)
+**Rule of Engineering**: NEVER edit `/etc/sudoers` directly with a normal text editor. A syntax typo in `/etc/sudoers` corrupts the elevation stack and locks all administrators out of root permanently. Always use `visudo` or drop verified rule files into `/etc/sudoers.d/`:
 
-```bash
-# Safe syntax validation check for all sudoers files
-sudo visudo -c
+```text
+# User/Group  Host=(RunAsUser:RunAsGroup)  Commands
+root          ALL=(ALL:ALL)                ALL
+%sudo         ALL=(ALL:ALL)                ALL
 
-# Grant passwordless sudo to engineering team for web service restarts only
-echo "%engineering ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx" | sudo tee /etc/sudoers.d/99-engineering-web
-
-# Validate file permissions (sudoers files MUST be 0440 or 0400)
-sudo chmod 0440 /etc/sudoers.d/99-engineering-web
+# Scoped rule: allow ops team to restart nginx without a password prompt
+%ops          ALL=(root)                   NOPASSWD: /usr/bin/systemctl restart nginx, /usr/bin/systemctl status nginx
 ```
 
 ---
 
-## 4. Standard POSIX File Permissions: Octal & Symbolic
+## 4. Standard POSIX Permissions (Octal & Symbolic)
 
-Every file and directory in Linux has an owner, an owning group, and a 9-bit permission triplet:
+Every file and directory in Linux has an owner (`u`), an owning group (`g`), and world/others (`o`).
+Permissions are evaluated in strict order: **Owner match? -> Group match? -> Others**.
 
-```
-  -   r w x   r - x   r - -
-  │   └──┬──┘ └──┬──┘ └──┬──┘
- Type   User    Group   Others
-```
+### The Permission Bits
+- `r` (Read = 4): View file contents (`cat`) or list directory contents (`ls`).
+- `w` (Write = 2): Modify file contents or create/delete files inside a directory.
+- `x` (Execute = 1): Run binary/script as a process, or **traverse / enter** a directory (`cd`).
 
-### Binary to Octal Mathematics
-Each permission bit represents a power of 2:
-- **`r` (Read)**: `4` (Binary `100`)
-- **`w` (Write)**: `2` (Binary `010`)
-- **`x` (Execute)**: `1` (Binary `001`)
-
-```
-rwx = 4 + 2 + 1 = 7 (Full Access)
-rw- = 4 + 2 + 0 = 6 (Read and Write)
-r-x = 4 + 0 + 1 = 5 (Read and Execute)
-r-- = 4 + 0 + 0 = 4 (Read Only)
---- = 0 + 0 + 0 = 0 (No Access)
-```
-
-### The Critical "Directory Execute" Difference
-For a **file**: `x` allows running the file as a binary program or script.  
-For a **directory**: `x` allows **entering / traversing** the directory (`cd` or opening files inside it).
-- If a directory is `r--` without `x`, a user can list the filenames (`ls`), but cannot open, read, or inspect their file contents!
-
-### Changing Ownership & Permissions
-```bash
-# Change owner to sconnor and group to engineering recursively
-sudo chown -R sconnor:engineering /srv/app
-
-# Set file permissions using Octal notation (Owner: rw, Group: r, Other: None)
-chmod 640 /srv/app/config.json
-
-# Set directory permissions using Symbolic notation
-# (Add execute to user, remove write from group and others)
-chmod u+x,go-w /srv/app/scripts
-```
-
-### Umask: The Default Permission Mask
-When a process creates a file or directory, default permissions are determined by the `umask` (subtraction mask):
-- Base Directory default: `0777`
-- Base File default: `0666` (Linux never assigns execute permission to new files by default)
-- Standard Umask `0022`:
-  - New directories: `0777 - 0022 = 0755` (`rwxr-xr-x`)
-  - New files: `0666 - 0022 = 0644` (`rw-r--r--`)
-- Hardened Umask `0027`:
-  - New directories: `0750` (`rwxr-x---`)
-  - New files: `0640` (`rw-r-----`)
+> [!IMPORTANT]
+> **Directory `x` Traversal Trap**: In Windows, reading a file requires Read permissions. In Linux, to read `/data/finance/budget.xlsx`, you must have **`x` (Execute) permissions on every parent directory** (`/`, `/data`, `/data/finance`) in addition to Read permissions on the file itself!
 
 ---
 
-## 5. Special Permission Bits: SUID, SGID & Sticky Bit
+## 5. Special Bits: SUID, SGID & The Sticky Bit
 
-Beyond standard `rwx`, Linux provides three specialized privilege bits:
+When standard `rwx` is not enough, Linux provides three special permission bits:
 
-| Bit | Octal | Applies To | Behavior |
-| :--- | :---: | :--- | :--- |
-| **SUID (Set User ID)** | `4000` | Executable File | Process executes with the permissions of the file owner (e.g. `/usr/bin/passwd` runs as root to update `/etc/shadow`). |
-| **SGID (Set Group ID)** | `2000` | Directory | All new files created inside inherit the **group ownership of the parent directory**, rather than the primary group of the user creating the file. Essential for shared team folders! |
-| **Sticky Bit** | `1000` | Directory | Users can only delete or rename files they own, even if the directory has world-write permissions (`777`). Exemplified by `/tmp`. |
-
-```bash
-# Configure shared collaboration folder:
-# 1. Create directory and assign group
-sudo mkdir /srv/engineering
-sudo chown root:engineering /srv/engineering
-
-# 2. Assign SGID bit (2) so all new files inherit 'engineering' group
-sudo chmod 2775 /srv/engineering
-
-# Verify permissions (Notice the 's' in group permissions)
-ls -ld /srv/engineering
-# drwxrwsr-x 2 root engineering 4096 /srv/engineering
-
-# Inspect the Sticky Bit on /tmp (Notice the 't' in others)
-ls -ld /tmp
-# drwxrwxrwt 12 root root 4096 /tmp
+```
+┌──────┬───────┬─────────────────────────────────────────────────────────────────┐
+│ Bit  │ Octal │ Operational Function                                            │
+├──────┼───────┼─────────────────────────────────────────────────────────────────┤
+│ SUID │ 4000  │ File executes with the privileges of the file owner (e.g. /bin/passwd)│
+│ SGID │ 2000  │ Files created inside directory inherit the directory's group    │
+│      │       │ (Essential for multi-user team collaboration spaces)           │
+│ Sticky 1000  │ Only the file owner or root can delete files inside directory  │
+│      │       │ (Used on shared directories like /tmp)                          │
+└──────┴───────┴─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. Granular Access: POSIX Access Control Lists (ACLs)
+## 6. POSIX Access Control Lists (ACLs: `getfacl` / `setfacl`)
 
-Standard `User/Group/Other` permissions only allow **one** user and **one** group. What if you need to grant read-write access to a second group or a backup service account without modifying existing ownership?
-Use POSIX ACLs (equivalent to Windows NTFS DACLs):
+When a directory needs multiple groups with differing permissions (e.g. `developers` = Read-Write, `auditors` = Read-Only), standard three-tier POSIX permissions break down. **POSIX ACLs** provide granular NTFS-style access:
 
 ```bash
-# View existing ACL entries on a sensitive database file
-getfacl /srv/db/production.db
+# View active extended ACLs
+getfacl /srv/app
 
 # Grant explicit Read-Write permissions to user 'backupuser'
-sudo setfacl -m u:backupuser:rw /srv/db/production.db
-
-# Grant explicit Read-Only permissions to group 'auditors'
-sudo setfacl -m g:auditors:r /srv/db/production.db
+sudo setfacl -m u:backupuser:rw /srv/app
 
 # Set Default ACLs on a directory (automatically inherited by all future child files)
-sudo setfacl -d -m g:engineering:rwx /srv/engineering
-
-# Remove all extended ACLs and restore pure POSIX mode
-sudo setfacl -b /srv/db/production.db
+sudo setfacl -d -m g:engineering:rwx /srv/app
 ```
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Secure Team Collaboration Space
+## Hands-On Lab: Building the Production Application Tree
 
-Deploy or reuse your lab VM (`New-LabVM -Name "drill-02" -Start`):
-
-> [!TIP]
-> **Safety Net: Snapshot Before Modifying Permissions & Sudoers**  
-> Before practicing permission lockouts or sudoers edits, take a snapshot from host PowerShell:
-> ```powershell
-> Checkpoint-LabVM -Name "drill-02" -SnapshotName "pre-permissions-drill"
-> ```
-> If you make a mistake and lock yourself out of root, revert in 2 seconds:
-> ```powershell
-> Restore-LabVM -Name "drill-02" -SnapshotName "pre-permissions-drill" -Force
-> ```
-> Once verified, merge and consolidate deltas:
-> ```powershell
-> Remove-LabCheckpoint -Name "drill-02" -All -Force
-> ```
-
-```bash
-# 1. Create two test users: 'dev-alice' and 'qa-bob'
-sudo useradd -m -s /bin/bash dev-alice
-sudo useradd -m -s /bin/bash qa-bob
-sudo groupadd devs
-
-# 2. Add dev-alice to devs
-sudo usermod -aG devs dev-alice
-
-# 3. Create a team folder /data/shared
-sudo mkdir -p /data/shared
-sudo chown root:devs /data/shared
-
-# 4. Set permissions: Owner (root) full, Group (devs) full, Others none, SGID enabled
-sudo chmod 2770 /data/shared
-
-# 5. Test SGID behavior as dev-alice
-sudo -u dev-alice touch /data/shared/alice_file.txt
-ls -l /data/shared/alice_file.txt
-# Notice: Group owner is 'devs', NOT alice's primary group!
-
-# 6. Test boundary isolation: qa-bob should be rejected
-sudo -u qa-bob ls /data/shared
-# Returns: Permission denied!
-
-# 7. Grant qa-bob explicit Read-Only access using ACLs
-sudo setfacl -m u:qa-bob:rx /data/shared
-sudo -u qa-bob ls /data/shared
-# Now succeeds!
+We continue on **`sysadmin-node`** from Level 01. Connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
 ```
+
+---
+
+## Part A: Guided Architectural Drill (Action & Reaction)
+
+In this drill, we provision the enterprise identity groups, service accounts, and application folder hierarchy that will serve as the foundation for the storage, service, and networking layers in subsequent levels.
+
+### 1. Provision Service Account & Developer User
+- **Action**: Create system service user `svc-app` (no login shell) and developer user `dev-alice` (interactive bash shell) in group `appteam`:
+  ```bash
+  # 1. Create team group
+  sudo groupadd appteam
+
+  # 2. Create service account (system user, no interactive login)
+  sudo useradd -r -s /usr/sbin/nologin -d /srv/app svc-app
+
+  # 3. Create interactive developer account
+  sudo useradd -m -s /bin/bash dev-alice
+  sudo usermod -aG appteam dev-alice
+  ```
+- **System Reaction**:
+  - The kernel updates `/etc/passwd` and `/etc/group`.
+  - Notice `svc-app` receives a UID below `1000`, while `dev-alice` receives UID >= `1000` with home directory `/home/dev-alice`.
+- **Verification**:
+  ```bash
+  id svc-app
+  id dev-alice
+  grep appteam /etc/group
+  ```
+
+### 2. Configure Application Directory with SGID
+- **Action**: Create the application tree `/srv/app` and logging directory `/var/log/app`, assigning ownership to `svc-app:appteam` and applying SGID (`2775`):
+  ```bash
+  sudo mkdir -p /srv/app /var/log/app
+  sudo chown -R svc-app:appteam /srv/app /var/log/app
+  sudo chmod 2775 /srv/app /var/log/app
+  ```
+- **System Reaction**:
+  The `2` in `2775` sets the `setgid` bit on the directory inode (`drwxrwsr-x`). When any user in the `appteam` group creates a file inside `/srv/app`, the VFS forces the new file's owning group to `appteam` rather than the user's personal primary group.
+- **Verification**:
+  Simulate file creation as `dev-alice`:
+  ```bash
+  sudo -u dev-alice touch /srv/app/config.json
+  ls -l /srv/app/config.json
+  # Notice: Owning group is automatically 'appteam', NOT 'dev-alice'!
+  ```
+
+### 3. Configure Default POSIX ACL Inheritance
+- **Action**: Ensure all future files created by any process automatically grant `rwx` permissions to the `appteam` group:
+  ```bash
+  sudo setfacl -d -m g:appteam:rwx /srv/app
+  sudo setfacl -d -m g:appteam:rwx /var/log/app
+  ```
+- **System Reaction**:
+  The filesystem stores the default ACL in the extended attribute block of the inode. When a child file is created via `open(O_CREAT)`, the kernel copies the default ACL into the child's effective permissions table.
+- **Verification**:
+  ```bash
+  getfacl /srv/app
+  ```
+
+### 4. Scoped Sudoers Privilege Rule
+- **Action**: Grant `dev-alice` scoped sudo rights to view system service status without exposing full root:
+  ```bash
+  cat << 'EOF' | sudo tee /etc/sudoers.d/99-appteam
+  # Allow members of appteam to inspect services without root password
+  %appteam ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *, /usr/bin/journalctl *
+  EOF
+  sudo chmod 0440 /etc/sudoers.d/99-appteam
+  ```
+- **System Reaction**:
+  Sudo reads `/etc/sudoers.d/` in lexical order. Setting permissions to `0440` satisfies sudo's strict security check (rejects writeable sudoer configs).
+- **Verification**:
+  Test that `dev-alice` can run `systemctl status` without password:
+  ```bash
+  sudo -u dev-alice sudo systemctl status cron
+  ```
+
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now complete this operational mission without step-by-step answers. Consult your notes or man pages as needed.
+
+### The Mission: Contractor Onboarding & Security Boundary Lockdown
+A security auditing contractor is joining the project. They require read-only access to inspect configuration files in `/srv/app/configs`, but must NEVER have access to application logs in `/var/log/app` or write access to `/srv/app`.
+
+1. **Customization**:
+   - Choose your own contractor username (e.g. `auditor-bob` or `sec-analyst`).
+   - Create a subfolder `/srv/app/configs` with a test configuration file `app.conf`.
+
+2. **Acceptance Criteria**:
+   - Contractor user is created with a home directory and `/bin/bash` shell.
+   - Contractor is NOT a member of the `appteam` or `sudo` groups.
+   - Contractor can traverse into `/srv/app/configs` and read `app.conf`.
+   - Contractor CANNOT create, modify, or delete files in `/srv/app` or `/srv/app/configs` (`Permission denied`).
+   - Contractor CANNOT read or list files inside `/var/log/app` (`Permission denied`).
+   - Contractor has zero sudo escalation privileges (`sudo -l` reports user is not allowed to run sudo).
+
+3. **Self-Verification**:
+   Execute this test suite under your contractor's identity to validate your security boundaries:
+   ```bash
+   # Replace AUDITOR_USER with your chosen username
+   AUDITOR_USER="auditor-bob"
+
+   echo "--- Testing Security Boundaries for $AUDITOR_USER ---"
+   # Test 1: Can read configs
+   sudo -u "$AUDITOR_USER" cat /srv/app/configs/app.conf >/dev/null 2>&1 && echo "[PASS] Config read permitted" || echo "[FAIL] Cannot read configs"
+
+   # Test 2: Cannot write to configs
+   ! sudo -u "$AUDITOR_USER" touch /srv/app/configs/hack.txt >/dev/null 2>&1 && echo "[PASS] Config write blocked" || echo "[FAIL] Write allowed!"
+
+   # Test 3: Cannot read logs
+   ! sudo -u "$AUDITOR_USER" ls /var/log/app >/dev/null 2>&1 && echo "[PASS] Log access blocked" || echo "[FAIL] Log access allowed!"
+
+   # Test 4: Cannot run sudo
+   ! sudo -u "$AUDITOR_USER" sudo -n true >/dev/null 2>&1 && echo "[PASS] Sudo elevation blocked" || echo "[FAIL] Sudo elevation active!"
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Save your milestone snapshot from host PowerShell:
+
+```powershell
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-02-complete"
+```
+
+In [Level 03](../level-03-directory-hierarchy-and-storage/README.md), `/srv/app` will outgrow the root disk! We will partition a dedicated block device, format it with Ext4, migrate `/srv/app`, and mount it persistently using `/etc/fstab` and UUIDs!
+
+---
+
+### Navigation
+| [← Previous: Level 01: Mental Model & Architecture](../level-01-mental-model-and-architecture/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 03: Directory Hierarchy & Storage →](../level-03-directory-hierarchy-and-storage/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 02: Installation & Clean Removal](../../hyperv-internals/02-installation-and-removal/README.md)).*

@@ -1,6 +1,6 @@
-﻿# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
+# Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing
 
-> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 04: Storage & Differencing Disks â†’](../04-storage-and-differencing-disks/README.md)
+> **[Tutorials Hub](../../README.md)** • **[Hyper-V Internals Track](../README.md)** • [← Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) • [Index](../../README.md) • [Next: Hyper-V 04: Storage & Differencing Disks →](../04-storage-and-differencing-disks/README.md)
 
 ---
 Now that we've got Hyper-V installed, verified, and operational, let's look at virtual networking. So you want your Linux VMs to talk to each other, fetch apt packages from the internet, and let you SSH into them from Windows Terminal—how does Hyper-V route those packets?
@@ -186,8 +186,8 @@ Now that our virtual network and IP discovery are solid, let's explore **[Tutori
 
 ---
 
-### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 04: Storage & Differencing Disks â†’](../04-storage-and-differencing-disks/README.md) |
+### Navigation
+| [← Previous: Hyper-V 02: Installation & Removal](../02-installation-and-removal/README.md) | [Tutorials Index](../../README.md) | [Next: Hyper-V 04: Storage & Differencing Disks →](../04-storage-and-differencing-disks/README.md) |
 | :--- | :---: | ---: |
 
-*(Related topic: See [Lab 03: Linux Networking & Diagnostics](../../linux/03-processes-systemd-and-networking/README.md)).*
+*(Related topic: See [Linux Level 06: Networking & Connectivity](../../01-sysadmin-foundations/level-06-networking-and-connectivity/README.md)).*

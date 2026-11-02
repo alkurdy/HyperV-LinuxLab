@@ -1,10 +1,10 @@
 # Level 03: Directory Hierarchy, Block Storage & Filesystems
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *CompTIA Linux+ Study Guide* & *Linux Command Line and Shell Scripting Bible*.
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *CompTIA Linux+ Study Guide* & *Linux Command Line and Shell Scripting Bible*.
 
 ---
 
-## 🎯 Objective
+## Objective
 Master the Filesystem Hierarchy Standard (FHS), understand Linux block device storage topography, partition drives using modern GPT tables, format filesystems (`ext4` and `xfs`), establish persistent mounts via `/etc/fstab` with UUIDs, and configure swap space.
 
 ---
@@ -68,9 +68,8 @@ sudo fdisk -l /dev/sda
 - **MBR (Master Boot Record)**: Legacy 1980s partitioning. Maximum 2 TB disk size, limited to 4 primary partitions.
 - **GPT (GUID Partition Table)**: Modern standard. Supports 18 Exabytes, up to 128 partitions, includes secondary backup partition header at the end of the disk. **Always use GPT on modern systems.**
 
-### Partitioning with `gdisk` or `parted`
+### Partitioning with `parted`
 ```bash
-# Non-interactive GPT partition creation using parted:
 # 1. Label secondary disk with GPT
 sudo parted /dev/sdb --script mklabel gpt
 
@@ -95,83 +94,44 @@ Linux supports numerous filesystem formats. In enterprise production, two domina
 | **Metadata Journaling**| Yes | High-performance allocation groups |
 | **Creation Command** | `sudo mkfs.ext4 /dev/sdb1` | `sudo mkfs.xfs /dev/sdb1` |
 
-```bash
-# Format partition as Ext4 with standard journal
-sudo mkfs.ext4 -L "DataVolume" /dev/sdb1
-
-# Check filesystem integrity (equivalent to Windows chkdsk)
-# WARNING: Never run fsck on a mounted filesystem!
-sudo umount /dev/sdb1
-sudo fsck.ext4 -f /dev/sdb1
-```
-
 ---
 
-## 5. Mounting & The `/etc/fstab` Contract
+## 5. Persistent Mounting via `/etc/fstab` (The UUID Rule)
 
-A filesystem must be mounted to a directory to become accessible.
+The `/etc/fstab` configuration file dictates what storage mounts upon host boot:
 
-### Manual Mount / Unmount
-```bash
-# Create mount directory
-sudo mkdir -p /mnt/data
-
-# Mount partition
-sudo mount /dev/sdb1 /mnt/data
-
-# Verify mount state and disk space
-df -hT /mnt/data
-
-# Unmount
-sudo umount /mnt/data
+```text
+# <file system>                           <mount point>  <type>  <options>       <dump>  <pass>
+UUID=3a1b4c9e-5f8a-4d2b-9e1a-8c7b6a5d4e3f /srv/app       ext4    defaults,nofail 0       2
 ```
 
-### The `/etc/fstab` Golden Rule: ALWAYS USE UUIDs
-**Why device names fail**: On reboot, the kernel scans SATA/PCIe buses asynchronously. The drive that was `/dev/sda` yesterday may become `/dev/sdb` today. If `/etc/fstab` references `/dev/sdb1`, the boot will hang or enter Emergency Mode!
-
-Every filesystem has a persistent, unique **UUID** that never changes:
-
-```bash
-# Find the UUID of /dev/sdb1
-sudo blkid /dev/sdb1
-# /dev/sdb1: UUID="9f8b4c2a-1122-3344-5566-778899aabbcc" TYPE="ext4"
-```
-
-### Anatomy of an `/etc/fstab` Line
-`/etc/fstab` contains 6 columns separated by whitespace:
-
-```
-[Device/UUID]                     [Mount Point]  [Type]  [Mount Options]          [Dump] [Pass]
-UUID=9f8b4c2a-1122-3344-5566...   /mnt/data      ext4    defaults,noatime,nofail  0      2
-```
-
-1. **Device / UUID**: Identifies the filesystem.
-2. **Mount Point**: Directory where files appear.
-3. **Type**: `ext4`, `xfs`, `nfs`, `btrfs`.
-4. **Options**:
+### The 6 Column Fields Explained:
+1. **Device Identifier**: **Always use UUID** (`UUID=...`). Device node paths (`/dev/sdb1`) can dynamically shift names after hardware changes or reboot order shifts!
+2. **Mount Point**: The target directory where the filesystem tree is grafted.
+3. **Type**: `ext4`, `xfs`, `btrfs`, `swap`.
+4. **Mount Options**:
    - `defaults`: Enables `rw, suid, dev, exec, auto, nouser, async`.
-   - `noatime`: Disables updating access timestamps on every file read (major I/O speedup!).
-   - `nofail`: **Critical for cloud/data drives**. Tells systemd to continue booting if this drive is missing!
-5. **Dump**: Backup flag (legacy; set to `0`).
-6. **Pass**: `fsck` boot check order (`1` for root `/`, `2` for data drives, `0` to disable).
+   - `nofail`: **CRITICAL DEFENSE**: Prevents systemd from halting the boot sequence in an emergency rescue shell if this secondary drive is disconnected or fails to mount!
+5. **Dump**: Legacy backup utility flag (always set to `0`).
+6. **Pass / Fsck Order**: `1` for root filesystem `/`; `2` for secondary filesystems; `0` for swap or network shares.
 
-> [!CAUTION]
-> **Test Before Rebooting**: Always run `sudo mount -a` after editing `/etc/fstab`. If `mount -a` returns errors, fix them immediately. An erroneous line in `/etc/fstab` will cause boot failure into emergency maintenance mode!
+> [!WARNING]
+> **Corrupt `/etc/fstab` Trap**: Never reboot without verifying your `/etc/fstab` syntax! Always run `sudo mount -a`. If it outputs any error, fix the line immediately before rebooting.
 
 ---
 
-## 6. Swap Space: Memory Relief Valve
+## 6. Linux Swap Space Architecture
 
-When physical RAM is exhausted, the Linux kernel pages anonymous memory out to disk swap:
+When physical RAM is exhausted, the Linux kernel swaps anonymous idle memory pages to disk:
 
 ```bash
-# 1. Allocate a 2GB contiguous swap file
-sudo fallocate -l 2G /swapfile
+# 1. Allocate a contiguous 1GB swapfile
+sudo fallocate -l 1G /swapfile
 
-# 2. Lock permissions to root only (CRITICAL security requirement)
-sudo chmod 600 /swapfile
+# 2. Restrict permissions (SECURITY: only root may read memory dumps)
+sudo chmod 0600 /swapfile
 
-# 3. Format as Linux swap area
+# 3. Format as swap space
 sudo mkswap /swapfile
 
 # 4. Activate swap
@@ -179,59 +139,166 @@ sudo swapon /swapfile
 
 # 5. Persist in /etc/fstab
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-
-# 6. Verify active swap memory
-free -h
 ```
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Disk Allocation & Persistent Mount
+## Hands-On Lab: Isolating Application Storage
 
-Deploy or reuse your lab VM (`New-LabVM -Name "drill-03" -Start`):
+We continue on **`sysadmin-node`** from Level 02. In Level 02, we created `/srv/app`. Now, the application requires dedicated block storage so its data and logs do not exhaust root `/`.
 
-> [!TIP]
-> **Safety Net: Snapshot Before Modifying Storage & /etc/fstab**  
-> Corrupting `/etc/fstab` causes systemd to drop into an emergency shell on reboot. Take a snapshot before editing storage:
-> ```powershell
-> Checkpoint-LabVM -Name "drill-03" -SnapshotName "pre-storage-drill"
-> ```
-> If the VM fails to boot or mount, revert back in 2 seconds:
-> ```powershell
-> Restore-LabVM -Name "drill-03" -SnapshotName "pre-storage-drill" -Force
-> ```
-> Once persistent mounts are verified, merge and consolidate deltas:
-> ```powershell
-> Remove-LabCheckpoint -Name "drill-03" -All -Force
-> ```
-
-```bash
-# 1. Check existing disk usage and partitions
-lsblk
-df -hT
-
-# 2. Create a simulated secondary block device (1GB loopback disk)
-sudo dd if=/dev/zero of=/var/lib/virtualdisk.img bs=1M count=1024
-sudo losetup /dev/loop10 /var/lib/virtualdisk.img
-
-# 3. Create a GPT partition table on the loop device
-sudo parted /dev/loop10 --script mklabel gpt
-sudo parted /dev/loop10 --script mkpart primary ext4 1MiB 100%
-
-# 4. Format with Ext4 filesystem
-sudo mkfs.ext4 -L "VirtualData" /dev/loop10p1
-
-# 5. Query its persistent UUID
-TARGET_UUID=$(sudo blkid -s UUID -o value /dev/loop10p1)
-echo "Generated UUID: $TARGET_UUID"
-
-# 6. Mount and create test files
-sudo mkdir -p /mnt/production_data
-sudo mount /dev/loop10p1 /mnt/production_data
-echo "Systems engineering drill verified" | sudo tee /mnt/production_data/proof.txt
-
-# 7. Unmount and verify the directory is empty when unmounted
-sudo umount /mnt/production_data
-ls /mnt/production_data
-# Empty!
+Connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
 ```
+
+---
+
+## Part A: Guided Architectural Drill (Action & Reaction)
+
+In this drill, we provision a simulated secondary block storage device, partition it with GPT, format it with Ext4, migrate existing `/srv/app` data onto it, persist it in `/etc/fstab` via UUID, and activate a swapfile.
+
+### 1. Create a Simulated Secondary Block Disk
+- **Action**: Create a 1GB sparse block image on the host and bind it as a loopback block device:
+  ```bash
+  sudo dd if=/dev/zero of=/var/lib/appdisk.img bs=1M count=1024
+  sudo losetup /dev/loop10 /var/lib/appdisk.img
+  lsblk /dev/loop10
+  ```
+- **System Reaction**:
+  The kernel's `loop` module creates a block device node `/dev/loop10` mapped to the underlying disk file. The Linux storage stack treats `/dev/loop10` identically to a physical SAS/SATA/NVMe disk.
+- **Verification**:
+  ```bash
+  lsblk | grep loop10
+  ```
+
+### 2. Partition with GPT and Format Ext4
+- **Action**: Create a modern GPT partition table, allocate 100% of the disk to a primary partition, and format with Ext4:
+  ```bash
+  # Partition with GPT
+  sudo parted /dev/loop10 --script mklabel gpt
+  sudo parted /dev/loop10 --script mkpart primary ext4 1MiB 100%
+
+  # Format with Ext4 filesystem and custom label
+  sudo mkfs.ext4 -L "AppStorage" /dev/loop10p1
+  ```
+- **System Reaction**:
+  `mkfs.ext4` writes the Superblock, Block Group Descriptors, Inode Tables, and Journal onto `/dev/loop10p1`. The kernel generates a unique 128-bit UUID for the volume.
+- **Verification**:
+  ```bash
+  sudo blkid /dev/loop10p1
+  ```
+
+### 3. Migrate `/srv/app` Data to the New Filesystem
+- **Action**: Mount the new volume temporarily, copy existing files, and mount to `/srv/app`:
+  ```bash
+  # Mount to temporary staging directory
+  sudo mkdir -p /mnt/stage
+  sudo mount /dev/loop10p1 /mnt/stage
+
+  # Copy existing application files while preserving ownership and permissions (archive mode)
+  sudo cp -a /srv/app/. /mnt/stage/
+
+  # Unmount staging and mount directly to /srv/app
+  sudo umount /mnt/stage
+  sudo mount /dev/loop10p1 /srv/app
+  ```
+- **System Reaction**:
+  The VFS attaches the root inode of `/dev/loop10p1` to directory entry `/srv/app`. Notice that the files created in Level 02 (`config.json`) are preserved with exact permissions!
+- **Verification**:
+  ```bash
+  df -hT /srv/app
+  ls -la /srv/app
+  ```
+
+### 4. Persist in `/etc/fstab` Using UUID
+- **Action**: Extract the UUID and add an entry with `nofail` protection:
+  ```bash
+  APP_UUID=$(sudo blkid -s UUID -o value /dev/loop10p1)
+  echo "UUID=$APP_UUID /srv/app ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab
+
+  # Test fstab syntax without rebooting
+  sudo umount /srv/app
+  sudo mount -a
+  ```
+- **System Reaction**:
+  `mount -a` parses `/etc/fstab`, matches the UUID against kernel udev block tables, and remounts `/srv/app`. If `/etc/fstab` has a syntax error, `mount -a` reports it immediately.
+- **Verification**:
+  ```bash
+  findmnt /srv/app
+  ```
+
+### 5. Provision Swap Memory
+- **Action**: Allocate and enable a 512MB swapfile:
+  ```bash
+  sudo fallocate -l 512M /swapfile
+  sudo chmod 0600 /swapfile
+  sudo mkswap /swapfile
+  sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  ```
+- **System Reaction**:
+  The kernel virtual memory subsystem adds `/swapfile` to its swap allocation bitmap. `free -h` immediately displays the new swap capacity.
+- **Verification**:
+  ```bash
+  free -h
+  swapon --show
+  ```
+
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now perform an unguided storage provisioning mission. No answers are provided.
+
+### The Mission: Secondary Dedicated Archive & Backup Partition
+Operations needs a dedicated archive partition for system backups and historical telemetry.
+
+1. **Customization**:
+   - Choose your own mount point directory under `/srv/` or `/var/` (e.g. `/srv/backup` or `/var/archive`).
+   - Create a secondary loopback disk or partition of at least 256MB.
+   - Choose your own filesystem label (e.g. `ArchiveStore` or `BackupData`).
+
+2. **Acceptance Criteria**:
+   - The partition is formatted with an enterprise filesystem (`ext4` or `xfs`).
+   - The filesystem is mounted to your designated directory with permissions allowing the `sudo` group write access.
+   - An entry exists in `/etc/fstab` identifying the partition **strictly by `UUID=`** with `defaults,nofail` options.
+   - Unmounting the volume and running `sudo mount -a` cleanly restores the mount point with exit code `0`.
+
+3. **Self-Verification**:
+   Execute this test suite to validate your storage implementation:
+   ```bash
+   # Replace with your chosen mount point
+   MOUNT_DIR="/srv/backup"
+
+   echo "--- Testing Storage Persistence for $MOUNT_DIR ---"
+   # Test 1: Active mount
+   findmnt "$MOUNT_DIR" >/dev/null 2>&1 && echo "[PASS] Directory is actively mounted" || echo "[FAIL] Not mounted!"
+
+   # Test 2: In fstab by UUID
+   grep -E "UUID=.*$MOUNT_DIR" /etc/fstab >/dev/null 2>&1 && echo "[PASS] /etc/fstab entry uses UUID" || echo "[FAIL] Missing or not using UUID in /etc/fstab!"
+
+   # Test 3: Clean remount via mount -a
+   sudo umount "$MOUNT_DIR"
+   sudo mount -a && findmnt "$MOUNT_DIR" >/dev/null 2>&1 && echo "[PASS] mount -a remount successful" || echo "[FAIL] mount -a failed to remount!"
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Save your milestone snapshot from host PowerShell:
+
+```powershell
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-03-complete"
+```
+
+In [Level 04](../level-04-troubleshooting-logs-and-diagnostics/README.md), `/srv/app` will face a real-world production crisis: an unlinked open file handle leak will exhaust disk capacity while `ls` reports zero large files! We will troubleshoot and recover without a reboot!
+
+---
+
+### Navigation
+| [← Previous: Level 02: Identity, Users & Permissions](../level-02-identity-users-and-permissions/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 04: Troubleshooting, Logging & Diagnostics →](../level-04-troubleshooting-logs-and-diagnostics/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 04: Virtual Storage & Differencing Disks](../../hyperv-internals/04-storage-and-differencing-disks/README.md)).*

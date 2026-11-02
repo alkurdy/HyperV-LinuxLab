@@ -1,6 +1,6 @@
-﻿# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
+# Hyper-V Tutorial 01: Prerequisites, Hardware Virtualization & Host Readiness
 
-> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 02: Installation & Removal â†’](../02-installation-and-removal/README.md)
+> **[Tutorials Hub](../../README.md)** • **[Hyper-V Internals Track](../README.md)** • [Index](../../README.md) • [Next: Hyper-V 02: Installation & Removal →](../02-installation-and-removal/README.md)
 
 ---
 So, you want to build a lightning-fast virtualization lab on your Windows machine, but you're not sure if your hardware and Windows setup are ready to handle it. Before we deploy our first Linux node, we need to inspect the bare metal.
@@ -208,8 +208,8 @@ Now that we've got host prerequisites verified, let's move to **[Tutorial 02: Hy
 
 ---
 
-### ðŸ§­ Navigation
-| [â† Previous: Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 02: Installation & Removal â†’](../02-installation-and-removal/README.md) |
+### Navigation
+| [Hyper-V Internals Track](../README.md) | [Tutorials Index](../../README.md) | [Next: Hyper-V 02: Installation & Removal →](../02-installation-and-removal/README.md) |
 | :--- | :---: | ---: |
 
-*(Related topic: See [Lab 01: Deploying Your Linux Lab](../../linux/01-deployment-and-ssh/README.md)).*
+*(Related topic: See [Linux Level 01: Mental Model & Architecture](../../01-sysadmin-foundations/level-01-mental-model-and-architecture/README.md)).*

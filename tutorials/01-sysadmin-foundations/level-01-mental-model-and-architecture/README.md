@@ -1,10 +1,10 @@
 # Level 01: The Sysadmin Mental Model Transition (Windows/VMware to Linux)
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Operating Systems: Internals and Design Principles* (Stallings) & *Linux Command Line and Shell Scripting Bible* (Blum).
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Operating Systems: Internals and Design Principles* (Stallings) & *Linux Command Line and Shell Scripting Bible* (Blum).
 
 ---
 
-## 🎯 Objective
+## Objective
 Bridge the conceptual gap between Windows Server/vSphere infrastructure administration and Linux systems engineering. By the end of this module, you will understand how Linux executes code, organizes files, handles input/output streams, and manages devices as files.
 
 ---
@@ -33,7 +33,7 @@ As an experienced systems administrator, you are accustomed to the Windows NT an
   ```bash
   # Check active running kernel release and architecture
   uname -r -m
-  # Linux 6.8.0-31-generic x86_64
+  # Output example: Linux 6.8.0-31-generic x86_64
 
   # List loaded kernel modules (equivalent to Windows drivers)
   lsmod | head -n 15
@@ -154,42 +154,143 @@ cat /etc/passwd | cut -d: -f1 | sort | grep -v "nologin"
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Host Inspection & Stream Redirection
+## Hands-On Lab: Provisioning Your Continuous Server
 
-Provision a fresh lab node using your `HyperV-LinuxLab` module:
+In this track, you are not spinning up disposable toy VMs that get wiped at the end of every tutorial. **You are building `sysadmin-node`, a single continuous enterprise Linux server that you will configure, expand, troubleshoot, and automate across all 7 levels.**
+
+### Step 0: Deploy Continuous Lab Node
+Run from your host elevated PowerShell console:
+```powershell
+New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
+```
+Note the IP address from the output, then connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
+```
+
+---
+
+## Part A: Guided Architectural Drill (Action & Reaction)
+
+Execute the following commands and observe how the Linux kernel and user space interact.
+
+### 1. Host Architecture & Kernel Privilege Ring
+- **Action**: Query the running kernel release, CPU topology, and virtualization instruction sets:
+  ```bash
+  uname -a
+  lscpu | grep -E "Architecture|CPU\(s\)|Model name|Hypervisor"
+  ```
+- **System Reaction**:
+  The kernel executes a system call (`uname(2)`) directly from Ring 0 memory structures. Notice the hypervisor flag: because your VM runs under Hyper-V, the Linux kernel detects Microsoft Hyper-V synthetic virtualization Enlightenment features (`hv_vmbus`) and bypasses legacy BIOS device emulation.
+- **Verification**:
+  ```bash
+  dmesg | grep -i "hyperv" | head -n 5
+  ```
+
+### 2. Memory & The Page Cache (Why "Free" RAM is a Lie)
+- **Action**: Check system memory:
+  ```bash
+  free -m
+  ```
+- **System Reaction**:
+  In Windows Task Manager, unused RAM sits empty. In Linux, **unused RAM is wasted RAM**.
+  The kernel aggressively repurposes idle memory for **Page Cache (`buff/cache`)**, caching recently accessed disk blocks in RAM.
+  - When an application demands memory, the kernel evicts clean cache pages in microseconds.
+  - **The metric that actually matters is `available`**, NOT `free`.
+- **Verification**:
+  Generate dummy disk reads and watch the cache grow in real-time:
+  ```bash
+  cat /proc/meminfo | grep -E "MemAvailable|Cached"
+  ```
+
+### 3. In-Memory Kernel Telemetry (`/proc` and `/sys`)
+- **Action**: Query kernel parameters and host uptime directly from RAM:
+  ```bash
+  cat /proc/uptime
+  cat /proc/sys/kernel/hostname
+  cat /proc/sys/vm/swappiness
+  ```
+- **System Reaction**:
+  These files have a size of `0` bytes on disk (`ls -l /proc/uptime`). When your process issues `read()`, the kernel intercepts the syscall and executes a kernel-side C function that writes the raw data straight into your process's memory buffer.
+- **Verification**:
+  ```bash
+  stat /proc/uptime
+  # Notice: Size is 0, IO Block is 1024, regular file, zero disk allocation.
+  ```
+
+### 4. POSIX Streams & Administrative Baseline Profile
+- **Action**: Establish an administrative baseline audit file by redirecting standard streams, and configure a global sysadmin profile:
+  ```bash
+  # Redirect hardware baseline to an audit report
+  sudo mkdir -p /var/log/sysadmin
+  sudo bash -c 'uname -r > /var/log/sysadmin/baseline.txt'
+  sudo bash -c 'free -m | grep Mem >> /var/log/sysadmin/baseline.txt'
+  sudo bash -c 'cat /proc/sys/kernel/hostname >> /var/log/sysadmin/baseline.txt'
+
+  # Configure global shell convenience profile for all admins
+  cat << 'EOF' | sudo tee /etc/profile.d/00-sysadmin.sh
+  export HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "
+  export EDITOR="nano"
+  alias ll='ls -lah --color=auto'
+  alias ports='ss -tulpn'
+  EOF
+  ```
+- **System Reaction**:
+  The shell opens `/var/log/sysadmin/baseline.txt` on File Descriptor 1 (`stdout`), evaluates the pipeline, and writes output without spawning a terminal emulator. Placing the script in `/etc/profile.d/` causes `bash` to source it upon every interactive login session.
+- **Verification**:
+  ```bash
+  cat /var/log/sysadmin/baseline.txt
+  source /etc/profile.d/00-sysadmin.sh
+  alias ports
+  ```
+
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now it is your turn to act as the systems administrator. **No step-by-step commands or answers are provided for this mission.** Use the concepts above, standard Linux utilities, man pages, or your notes.
+
+### The Mission: Custom Host Telemetry Extractor
+The operations team requires an automated host telemetry extractor that records server vitals upon demand.
+
+1. **Customization**:
+   - Choose your own script name located in `/usr/local/bin/` (e.g. `audit-host.sh`, `srv-telemetry.sh`, or `node-probe.sh`).
+   - Choose your own log file destination under `/var/log/` (e.g. `/var/log/node-status.log` or `/var/log/host-metrics.log`).
+
+2. **Acceptance Criteria**:
+   - The script must be executable by root and members of the `sudo` group.
+   - When executed, the script must output at least four distinct parameters in `KEY=VALUE` plaintext format:
+     - `HOSTNAME=<value>` (Extracted from `/proc` or `hostname`)
+     - `KERNEL=<value>` (Extracted from `uname`)
+     - `UPTIME_SEC=<value>` (Total seconds of system uptime)
+     - `MEM_AVAILABLE_MB=<value>` (Current available RAM in megabytes)
+   - If an error occurs during execution, errors must NOT be swallowed silently; standard output must append to your chosen log file, while standard error is redirected to a companion `.err` file.
+
+3. **Self-Verification**:
+   Run your script, then execute this verification check to validate your work:
+   ```bash
+   # Replace with your actual log path
+   LOG_FILE="/var/log/node-status.log"
+
+   test -s "$LOG_FILE" && grep -E "HOSTNAME=" "$LOG_FILE" && grep -E "MEM_AVAILABLE_MB=" "$LOG_FILE" && echo "[PASS] Telemetry collector satisfied all acceptance criteria!" || echo "[FAIL] Acceptance criteria missing."
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Once you have verified Part A and Part B, **do not reset the VM**. Save your milestone checkpoint from your host PowerShell console:
 
 ```powershell
-# From your host elevated PowerShell
-New-LabVM -Name "drill-01" -MemoryGB 2 -CPUCount 2 -Start
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-01-complete"
 ```
 
-SSH into the machine (`ssh labadmin@<VM_IP>`) and execute the following break-fix and inspection drill:
+In [Level 02](../level-02-identity-users-and-permissions/README.md), we will build identity boundaries, sudoer privilege tiers, and a collaborative application directory tree directly on this server!
 
-```bash
-# 1. Inspect the host architecture and kernel
-uname -a
-lscpu | grep -E "Architecture|CPU\(s\)|Model name"
+---
 
-# 2. Inspect memory and explain why "free" RAM is misleading (buffers/cache)
-free -m
-# Notice: In Linux, unused RAM is wasted RAM. The kernel aggressively uses
-# free RAM for the Page Cache. Available RAM is what can be claimed instantly.
+### Navigation
+| [Tier 1: Sysadmin Foundations](../README.md) | [Tutorials Hub](../../README.md) | [Next: Level 02: Identity, Users & Permissions →](../level-02-identity-users-and-permissions/README.md) |
+| :--- | :---: | ---: |
 
-# 3. Explore the /proc filesystem
-echo "Host booted $(uptime -p)"
-cat /proc/sys/kernel/hostname
-cat /proc/sys/vm/swappiness
-
-# 4. Stream Redirection Exercise
-# Capture listening ports, filter out loopback, and write to a report
-ss -tulpn | grep -v "127.0.0.1" > /tmp/external_services.txt
-cat /tmp/external_services.txt
-
-# 5. Clean exit
-exit
-```
-
-Once completed, reset the node:
-```powershell
-Reset-LabVM -Name "drill-01" -Force
-```
+*(Related topic: See [Hyper-V Tutorial 01: Host Prerequisites & Silicon](../../hyperv-internals/01-prerequisites-and-hardware/README.md)).*

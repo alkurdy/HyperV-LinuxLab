@@ -1,10 +1,10 @@
 # Level 05: Process Lifecycle, Signals & Systemd Service Management
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Operating Systems: Internals and Design Principles* (Stallings) & *Linux Cookbook* (Schroder).
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Operating Systems: Internals and Design Principles* (Stallings) & *Linux Cookbook* (Schroder).
 
 ---
 
-## 🎯 Objective
+## Objective
 Master process creation, process states, and process termination mechanics. Understand POSIX inter-process signals (`SIGTERM`, `SIGKILL`, `SIGHUP`), control daemon units with `systemctl`, write production-grade `systemd` service files, and implement systemd timers.
 
 ---
@@ -52,7 +52,7 @@ ps aux | head -n 15
 ps -ef --forest
 
 # Find PID of a service by name
-pgrep -l nginx
+pgrep -l sshd
 
 # Sort processes by memory consumption (Resident Set Size - RSS)
 ps aux --sort=-%mem | head -n 10
@@ -79,7 +79,7 @@ kill -15 2840
 # Force immediate termination of a frozen process
 kill -9 2840
 
-# Signal Nginx to reload its configuration files without downtime
+# Signal a service to reload its configuration files without downtime
 sudo pkill -1 nginx
 # Equivalent systemd command:
 sudo systemctl reload nginx
@@ -102,50 +102,47 @@ sudo systemctl start nginx
 sudo systemctl stop nginx
 sudo systemctl restart nginx
 
-# Enable or Disable service startup at system boot
-sudo systemctl enable nginx
-sudo systemctl disable nginx
+# Reload service configuration without stopping connections
+sudo systemctl reload nginx
 
-# Combine Enable and Start in a single command
+# Enable service to start automatically on system boot
+sudo systemctl enable nginx
+
+# Enable and start immediately in a single command
 sudo systemctl enable --now nginx
 
-# THE MASK COMMAND (Preventing accidental start):
-# Masking symlinks the unit file to /dev/null. It CANNOT be started by any user,
-# dependency, or script until unmasked!
-sudo systemctl mask apache2
-sudo systemctl unmask apache2
+# Disable automatic boot startup
+sudo systemctl disable nginx
 
-# List all failed units on the host
-systemctl --failed
+# Check if a service is actively running (returns 0 if running, non-zero if stopped)
+systemctl is-active nginx
 ```
 
 ---
 
-## 5. Writing a Production Systemd Service File
+## 5. Authoring Production Systemd Service Units
 
-Place custom unit files in `/etc/systemd/system/<servicename>.service`. Never edit vendor unit files in `/lib/systemd/system/` (package updates overwrite them).
+Custom units belong in `/etc/systemd/system/`. Never edit vendor unit files in `/usr/lib/systemd/system/` (they are overwritten during package upgrades!).
 
 ```ini
 [Unit]
-Description=Enterprise Telemetry Collector Service
+Description=My Enterprise Application Service
 After=network.target network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=telemetry
-Group=telemetry
-WorkingDirectory=/opt/telemetry
-ExecStart=/usr/bin/python3 /opt/telemetry/collector.py --port 8080
-ExecReload=/bin/kill -HUP $MAINPID
-
-# Auto-Recovery Configuration
+User=svc-app
+Group=appteam
+WorkingDirectory=/srv/app
+ExecStart=/usr/bin/python3 /srv/app/bin/app.py
 Restart=always
-RestartSec=5s
+RestartSec=3s
+Environment=PORT=8080
+StandardOutput=journal
+StandardError=journal
 
-# Security Hardening & Resource Limits
-LimitNOFILE=65535
-PrivateTmp=true
+# Hardening Directives
 ProtectSystem=full
 NoNewPrivileges=true
 
@@ -168,62 +165,160 @@ sudo systemctl start myapp.service
 
 ---
 
-## 6. Systemd Timers: The Modern Replacement for Cron
+## Hands-On Lab: Deploying a Self-Healing Service
 
-Systemd timers (`.timer`) provide microsecond precision, monotonic scheduling, and dependency guarantees over traditional cron:
+We continue on **`sysadmin-node`** from Level 04. In Level 02, we provisioned `svc-app` and `appteam`. In Level 03, we mounted dedicated storage to `/srv/app`. Now, we build a production systemd daemon running under that service user, logging to `/var/log/app`, and testing its self-healing reaction under process failure.
 
-```bash
-# List all active systemd timers across the host
-systemctl list-timers --all
+Connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
 ```
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Building a Self-Healing Service
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Deploy or reuse your lab VM (`New-LabVM -Name "drill-05" -Start`):
+In this drill, we author an application daemon, wrap it in a systemd service, verify user isolation and cgroup confinement, and crash the process to observe systemd's automatic self-healing resurrection.
 
-```bash
-# 1. Create a simulated long-running background worker script
-sudo mkdir -p /opt/labservice
-cat << 'EOF' | sudo tee /opt/labservice/worker.sh
-#!/usr/bin/env bash
-echo "Worker daemon initialized with PID $$"
-while true; do
-    echo "Heartbeat at $(date)"
-    sleep 3
-done
-EOF
-sudo chmod +x /opt/labservice/worker.sh
+### 1. Create the Application Daemon Script
+- **Action**: Author an application worker script inside `/srv/app/bin/` running under our `appteam` permissions:
+  ```bash
+  sudo mkdir -p /srv/app/bin
+  cat << 'EOF' | sudo tee /srv/app/bin/worker.sh
+  #!/usr/bin/env bash
+  echo "[$(date)] Worker initialized under PID $$ as user $(whoami)" >> /var/log/app/worker.log
+  while true; do
+      echo "[$(date)] Heartbeat from PID $$" >> /var/log/app/worker.log
+      sleep 2
+  done
+  EOF
+  sudo chmod +x /srv/app/bin/worker.sh
+  sudo chown -R svc-app:appteam /srv/app/bin
+  ```
+- **System Reaction**:
+  The script resides on the persistent Ext4 partition mounted at `/srv/app` from Level 03. Ownership belongs to `svc-app:appteam` with SGID inheritance.
+- **Verification**:
+  ```bash
+  ls -l /srv/app/bin/worker.sh
+  ```
 
-# 2. Write a production systemd unit file with automatic restart
-cat << 'EOF' | sudo tee /etc/systemd/system/lab-worker.service
-[Unit]
-Description=Hands-on Self Healing Worker
+### 2. Author the Production Systemd Service Unit
+- **Action**: Create `/etc/systemd/system/production-app.service` configured with `User=svc-app`, working directory `/srv/app`, and automatic restart:
+  ```bash
+  cat << 'EOF' | sudo tee /etc/systemd/system/production-app.service
+  [Unit]
+  Description=Production Enterprise App Daemon
+  After=network.target
 
-[Service]
-Type=simple
-ExecStart=/opt/labservice/worker.sh
-Restart=always
-RestartSec=2s
+  [Service]
+  Type=simple
+  User=svc-app
+  Group=appteam
+  WorkingDirectory=/srv/app
+  ExecStart=/srv/app/bin/worker.sh
+  Restart=always
+  RestartSec=2s
+  StandardOutput=journal
+  StandardError=journal
 
-[Install]
-WantedBy=multi-user.target
-EOF
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  ```
+- **System Reaction**:
+  Creating the file in `/etc/systemd/system/` registers an administrator-level unit definition with precedence over package vendor defaults in `/usr/lib/systemd/system/`.
 
-# 3. Register and start the unit
-sudo systemctl daemon-reload
-sudo systemctl enable --now lab-worker.service
+### 3. Register and Start the Daemon
+- **Action**: Notify systemd of the new unit on disk and start the service:
+  ```bash
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now production-app.service
+  ```
+- **System Reaction**:
+  - `systemctl daemon-reload` causes systemd (PID 1) to parse all unit files, rebuild its dependency graph, and create in-memory unit objects.
+  - `systemctl enable` creates a symbolic link in `/etc/systemd/system/multi-user.target.wants/`.
+  - `systemctl start` forks a child process from PID 1, drops root privileges to `svc-app` (`setuid/setgid`), creates a dedicated Control Group (cgroup) slice, and executes the binary.
+- **Verification**:
+  Inspect status, cgroup slice, and log output:
+  ```bash
+  sudo systemctl status production-app.service
+  tail -n 5 /var/log/app/worker.log
+  ```
 
-# 4. Verify running state
-sudo systemctl status lab-worker.service
+### 4. Test Self-Healing Resilience: Crash with `SIGKILL`
+- **Action**: Discover the worker process PID and kill it abruptly with `kill -9` (`SIGKILL`):
+  ```bash
+  # Identify PID
+  INITIAL_PID=$(pgrep -f "worker.sh")
+  echo "Current active PID: $INITIAL_PID"
 
-# 5. TEST SELF-HEALING: Crash the process with SIGKILL (kill -9)
-WORKER_PID=$(pgrep -f "worker.sh")
-echo "Killing PID $WORKER_PID with SIGKILL..."
-sudo kill -9 $WORKER_PID
+  # Crash the process with SIGKILL (unconditional kernel kill)
+  sudo kill -9 $INITIAL_PID
 
-# 6. Check status immediately: systemd detects death and resurrects it with a new PID!
-sleep 3
-sudo systemctl status lab-worker.service
+  # Pause 3 seconds to let systemd react
+  sleep 3
+
+  # Re-check status
+  NEW_PID=$(pgrep -f "worker.sh")
+  echo "Resurrected PID: $NEW_PID"
+  ```
+- **System Reaction**:
+  When `$INITIAL_PID` receives `SIGKILL`, the kernel destroys its memory pages without warning. Systemd's `epoll` listener detects the death of its child process via the Linux cgroup controller. Recognizing `Restart=always`, systemd waits 2 seconds (`RestartSec=2s`), forks a new worker process, and updates journald with the recovery event!
+- **Verification**:
+  ```bash
+  test "$INITIAL_PID" -ne "$NEW_PID" && echo "[OK] Self-healing verified! PID shifted from $INITIAL_PID to $NEW_PID"
+  journalctl -u production-app.service -n 5
+  ```
+
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now complete an independent systemd automation mission without answers provided.
+
+### The Mission: Housekeeping Daemon & Systemd Timer
+Operations requires an automated scheduled maintenance task to archive stale logs in `/var/log/app` every few minutes, managed via a modern **Systemd Timer** (`.timer`) instead of legacy cron.
+
+1. **Customization & Setup**:
+   - Create a maintenance script `/srv/app/bin/maintenance.sh` that appends a timestamped heartbeat to `/var/log/app/maintenance.log` and prunes any `*.tmp` files from `/srv/app/tmp`.
+   - Ensure the script is executable and owned by `svc-app:appteam`.
+
+2. **Acceptance Criteria**:
+   - Create a companion oneshot service `/etc/systemd/system/app-maintenance.service` (`Type=oneshot`, `User=svc-app`, `ExecStart=/srv/app/bin/maintenance.sh`).
+   - Create a timer unit `/etc/systemd/system/app-maintenance.timer` that triggers the companion service periodically (e.g. `OnUnitActiveSec=2m` or `OnCalendar=*:0/2`).
+   - Reload systemd and enable/start the timer (`app-maintenance.timer`).
+   - The timer must appear in `systemctl list-timers` in an `active (waiting)` state with a scheduled countdown.
+
+3. **Self-Verification**:
+   Execute this test suite to validate your systemd timer implementation:
+   ```bash
+   echo "--- Validating Systemd Timer Deployment ---"
+   # Test 1: Service file exists
+   test -f /etc/systemd/system/app-maintenance.service && echo "[PASS] Service unit present" || echo "[FAIL] Service unit missing"
+
+   # Test 2: Timer active
+   systemctl is-active app-maintenance.timer >/dev/null 2>&1 && echo "[PASS] Timer is actively running" || echo "[FAIL] Timer is not active!"
+
+   # Test 3: Listed in systemd scheduler
+   systemctl list-timers | grep "app-maintenance.timer" >/dev/null 2>&1 && echo "[PASS] Timer scheduled in systemd" || echo "[FAIL] Timer not in schedule list!"
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Save your milestone snapshot from host PowerShell:
+
+```powershell
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-05-complete"
 ```
+
+In [Level 06](../level-06-networking-and-connectivity/README.md), our running application service will need network connectivity! We will bind listening sockets, inspect network states with `ss`, trace routes, and lock down the perimeter firewall with UFW!
+
+---
+
+### Navigation
+| [← Previous: Level 04: Troubleshooting, Logging & Diagnostics](../level-04-troubleshooting-logs-and-diagnostics/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 06: Linux Networking & Connectivity →](../level-06-networking-and-connectivity/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 03: Virtual Networking](../../hyperv-internals/03-virtual-networking/README.md)).*

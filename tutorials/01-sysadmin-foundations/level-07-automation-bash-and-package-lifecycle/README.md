@@ -1,10 +1,10 @@
 # Level 07: Automation, Bash Scripting & Software Lifecycle
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Learning the Bash Shell* & *Linux Command Line and Shell Scripting Bible*.
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Learning the Bash Shell* & *Linux Command Line and Shell Scripting Bible*.
 
 ---
 
-## 🎯 Objective
+## Objective
 Master software package management across distribution families (`apt` vs `dnf`), schedule recurring workloads with Cron, author bulletproof defensive Bash automation scripts using strict mode (`set -euo pipefail`), manipulate configuration files with `sed` and `awk`, and solve a full capstone break-fix operational scenario.
 
 ---
@@ -69,7 +69,6 @@ crontab -e
 crontab -l
 
 # Drop-in cron files for system-wide administrative automation:
-# Place individual job files in /etc/cron.d/my-backup-job
 echo "0 3 * * * root /usr/local/bin/backup.sh > /var/log/backup.log 2>&1" | sudo tee /etc/cron.d/daily-backup
 ```
 
@@ -95,56 +94,25 @@ set -euo pipefail
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 1. Variables and Constants
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly LOG_FILE="/var/log/sysadmin_audit.log"
-readonly THRESHOLD=80
-
-# 2. Logging Function with Timestamps
-log() {
-    local level="$1"
-    local message="$2"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}" | sudo tee -a "${LOG_FILE}"
+# Trap unexpected exits and cleanup temporary files
+cleanup() {
+    rm -f /tmp/lock.pid
+    echo "[$(date)] Execution finished."
 }
-
-# 3. Defensive Elevation Check
-if [[ "${EUID}" -ne 0 ]]; then
-    echo "ERROR: This script must be executed as root (or via sudo)." >&2
-    exit 1
-fi
-
-log "INFO" "Starting automated disk capacity audit..."
-
-# 4. Command Substitution & Text Parsing
-CURRENT_USAGE=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
-
-log "INFO" "Root partition utilization: ${CURRENT_USAGE}%"
-
-# 5. Conditional Logic
-if [[ "${CURRENT_USAGE}" -gt "${THRESHOLD}" ]]; then
-    log "WARN" "Disk usage exceeds threshold (${THRESHOLD}%). Purging apt cache..."
-    apt-get clean
-else
-    log "INFO" "Disk capacity is within acceptable operational parameters."
-fi
-
-log "INFO" "Audit completed successfully."
-exit 0
+trap cleanup EXIT
 ```
 
 ---
 
-## 4. Text Stream Manipulation: `sed` and `awk`
+## 4. Text Stream Filtering: `sed` and `awk`
 
-In Linux, you rarely modify configuration files manually in automated deployments. Use `sed` (stream editor) and `awk` (pattern scanning):
-
-### `sed` (Find & Replace in Config Files)
+### `sed` (Stream Editor - Search and Replace)
 ```bash
-# Substitute 'Port 22' with 'Port 2222' in sshd_config in-place (-i)
-sudo sed -i 's/^#*Port 22/Port 2222/' /etc/ssh/sshd_config
+# Substitute 'DEBUG' with 'INFO' in config.json
+sed -i 's/DEBUG/INFO/g' /srv/app/config.json
 
-# Delete all blank lines and comment lines starting with '#'
-sed -i '/^[[:space:]]*#/d; /^[[:space:]]*$/d' /tmp/sample.conf
+# Delete comment lines starting with #
+sed -i '/^#/d' /etc/app.conf
 ```
 
 ### `awk` (Column and Field Extraction)
@@ -152,76 +120,196 @@ sed -i '/^[[:space:]]*#/d; /^[[:space:]]*$/d' /tmp/sample.conf
 # Extract column 1 (IP) and column 2 (Hostname) from /etc/hosts
 awk '{print $1, $2}' /etc/hosts
 
-# Print usernames whose UID is greater than or equal to 1000 from /etc/passwd
+# Print usernames whose UID is >= 1000 from /etc/passwd
 awk -F: '$3 >= 1000 {print $1, $3}' /etc/passwd
 ```
 
 ---
 
-## 🛠️ Hands-On Capstone Break-Fix Drill (Levels 01 - 07 Mastery)
+## Hands-On Lab: Automation & The Grand Capstone Incident
 
-Deploy a fresh node using your `HyperV-LinuxLab` module:
+We continue on **`sysadmin-node`** from Level 06. All layers (identity, storage, process, network, and firewall) are assembled.
 
+Connect via SSH:
 ```powershell
-New-LabVM -Name "capstone-node" -MemoryGB 2 -CPUCount 2 -Start
+ssh labadmin@<VM_IP>
 ```
 
-> [!TIP]
-> **Safety Net: Milestone Checkpoints During Capstone Multi-Stage Drills**  
-> As you complete each stage (packages installed, SGID folder configured, systemd service active), snapshot your progress:
-> ```powershell
-> Checkpoint-LabVM -Name "capstone-node" -SnapshotName "stage-1-nginx-ready"
-> ```
-> If a test script corrupts configuration files in Stage 4, roll back to Stage 1 without re-installing packages:
-> ```powershell
-> Restore-LabVM -Name "capstone-node" -SnapshotName "stage-1-nginx-ready" -Force
-> ```
-> When all stages are completed and verified, consolidate:
-> ```powershell
-> Remove-LabCheckpoint -Name "capstone-node" -All -Force
-> ```
+---
 
-SSH into the machine (`ssh labadmin@<VM_IP>`) and complete this end-to-end operational assignment:
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-### The Mission:
-1. **User & Identity**: Create a service group `webops` and service user `deployer` (no interactive shell, member of `webops`).
-2. **Directory & Permissions**: Create `/var/www/app`. Assign ownership to `deployer:webops`. Set permissions so all newly created files inherit group `webops` automatically (SGID).
-3. **Software & Listener**: Install `nginx`. Verify port `80` is listening via `ss -tulpn`.
-4. **Automation Script**: Author a script `/usr/local/bin/healthcheck.sh` that checks if `nginx` is running. If down, restart it and log an alert to `/var/log/healthcheck.log`.
-5. **Systemd Service**: Wrap the healthcheck in a self-healing systemd service or timer.
+In this drill, we install `jq` using `apt`, author a robust health-check automation script with strict error handling, and schedule it via cron.
 
-### Solution Script:
+### 1. Package Installation & Metadata Inspection
+- **Action**: Update local repository metadata and install `jq` (command-line JSON parser):
+  ```bash
+  sudo apt update
+  sudo apt install -y jq
+  dpkg -S $(which jq)
+  ```
+- **System Reaction**:
+  `apt update` downloads cryptographic InRelease index files from the distribution mirror and updates `/var/lib/apt/lists/`. `apt install` calculates the dependency DAG (Directed Acyclic Graph), extracts `.deb` archives via `dpkg`, and registers binaries in `/usr/bin/`.
+- **Verification**:
+  ```bash
+  jq --version
+  ```
+
+### 2. Author Defensive Health-Check Automation
+- **Action**: Author `/usr/local/bin/app-healthcheck.sh` implementing `set -euo pipefail`:
+  ```bash
+  cat << 'EOF' | sudo tee /usr/local/bin/app-healthcheck.sh
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  LOG_TARGET="/var/log/app/healthcheck.log"
+
+  log() {
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_TARGET"
+  }
+
+  # 1. Verify systemd unit is active
+  if ! systemctl is-active --quiet production-app.service; then
+      log "WARNING: production-app.service is down! Attempting recovery..."
+      systemctl restart production-app.service
+      sleep 2
+  fi
+
+  # 2. Verify HTTP endpoint responds
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 http://localhost:8080 || echo "000")
+  if [ "$HTTP_CODE" -eq 200 ]; then
+      log "OK: Health check passed (HTTP $HTTP_CODE)"
+  else
+      log "CRITICAL: HTTP check returned $HTTP_CODE! Escalating..."
+      exit 1
+  fi
+  EOF
+  sudo chmod +x /usr/local/bin/app-healthcheck.sh
+  ```
+- **System Reaction**:
+  The script utilizes standard exit codes. If `curl` fails or the service is inactive, it attempts self-healing before logging. If any unexpected unhandled command fails, `set -e` halts execution instantly.
+- **Verification**:
+  Run manually:
+  ```bash
+  sudo /usr/local/bin/app-healthcheck.sh
+  cat /var/log/app/healthcheck.log
+  ```
+
+---
+
+## Part B: Admin Solo Drill (Tier 1 Grand Capstone Mission)
+
+Now face the ultimate systems administrator test. **No solutions or answers are provided.** You must diagnose, triage, and repair all layers using the knowledge and notes accumulated across Levels 01 through 06.
+
+### The Incident: Simulated Production Multi-Layer Outage
+A junior deployment script experienced an unhandled failure and clobbered multiple system configurations across `sysadmin-node`.
+
+Trigger the multi-layer incident by running this fault-injection command:
+
 ```bash
-# 1. Identity
-sudo groupadd webops
-sudo useradd -r -s /usr/sbin/nologin -g webops deployer
+# INJECT OUTAGE FAULTS
+sudo umount /srv/app 2>/dev/null || true
+sudo chmod 0000 /srv/app
+sudo systemctl stop production-app.service
+sudo ufw deny 8080/tcp comment "Clobbered rule" >/dev/null
+```
 
-# 2. Storage & SGID
-sudo mkdir -p /var/www/app
-sudo chown deployer:webops /var/www/app
-sudo chmod 2775 /var/www/app
+### The Ticket (SEV-1):
+> *"Production app is completely down! External clients receive timeout on port 8080. Internal developers report permission denied errors. The systemd service fails to start. Storage status is unknown."*
 
-# 3. Package & Listener
-sudo apt update && sudo apt install -y nginx
-sudo ss -tulpn | grep :80
+### Acceptance Criteria:
+1. **Layer 1: Storage & Filesystem**  
+   `/srv/app` must be actively mounted to its dedicated Ext4 storage volume from `/etc/fstab`.
+2. **Layer 2: Permissions & SGID**  
+   Ownership of `/srv/app` must be restored to `svc-app:appteam` with permissions `2775` (SGID active).
+3. **Layer 3: Systemd Daemon**  
+   `production-app.service` must be actively running (`active (running)`) under user `svc-app`.
+4. **Layer 4: Perimeter Firewall**  
+   The blocking UFW rule must be removed and port `8080/tcp` must be explicitly permitted.
+5. **Layer 5: End-to-End Verification**  
+   Executing `curl -I http://localhost:8080` must return HTTP `200 OK`.
 
-# 4. Automation Script
-cat << 'EOF' | sudo tee /usr/local/bin/healthcheck.sh
+### Self-Verification (The Grader):
+When you believe you have repaired all 4 layers, execute this unguided validator script:
+
+```bash
+cat << 'EOF' > /tmp/validate-capstone.sh
 #!/usr/bin/env bash
-set -euo pipefail
-if ! systemctl is-active --quiet nginx; then
-    echo "[$(date)] ALERT: Nginx down. Attempting recovery..." >> /var/log/healthcheck.log
-    systemctl restart nginx
+echo "=== TIER 1 CAPSTONE OPERATIONAL AUDIT ==="
+FAILURES=0
+
+# Test 1: Storage
+if findmnt /srv/app >/dev/null 2>&1; then
+    echo "[PASS] Layer 1: /srv/app filesystem is actively mounted."
+else
+    echo "[FAIL] Layer 1: /srv/app is NOT mounted!"
+    FAILURES=$((FAILURES+1))
+fi
+
+# Test 2: Permissions & SGID
+PERMS=$(stat -c "%a" /srv/app 2>/dev/null || echo "000")
+GROUP=$(stat -c "%G" /srv/app 2>/dev/null || echo "unknown")
+if [ "$PERMS" = "2775" ] && [ "$GROUP" = "appteam" ]; then
+    echo "[PASS] Layer 2: Permissions (2775) and SGID (appteam) intact."
+else
+    echo "[FAIL] Layer 2: Permissions ($PERMS) or Group ($GROUP) incorrect!"
+    FAILURES=$((FAILURES+1))
+fi
+
+# Test 3: Systemd Service
+if systemctl is-active --quiet production-app.service; then
+    echo "[PASS] Layer 3: production-app.service is active and running."
+else
+    echo "[FAIL] Layer 3: production-app.service is NOT running!"
+    FAILURES=$((FAILURES+1))
+fi
+
+# Test 4: Firewall Port 8080
+if sudo ufw status | grep -E "8080/tcp.*ALLOW" >/dev/null 2>&1; then
+    echo "[PASS] Layer 4: UFW allows inbound 8080/tcp."
+else
+    echo "[FAIL] Layer 4: Port 8080/tcp is blocked in UFW!"
+    FAILURES=$((FAILURES+1))
+fi
+
+# Test 5: HTTP End-to-End
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 2 http://localhost:8080 || echo "000")
+if [ "$HTTP_CODE" -eq 200 ]; then
+    echo "[PASS] Layer 5: End-to-end HTTP response verified (200 OK)."
+else
+    echo "[FAIL] Layer 5: HTTP probe failed with status $HTTP_CODE!"
+    FAILURES=$((FAILURES+1))
+fi
+
+echo "========================================="
+if [ "$FAILURES" -eq 0 ]; then
+    echo "[SUCCESS] CONGRATULATIONS: Tier 1 Sysadmin Foundations Mastered!"
+else
+    echo "[ACTION REQUIRED] $FAILURES layers still in failure state. Check your notes and logs."
 fi
 EOF
-sudo chmod +x /usr/local/bin/healthcheck.sh
-
-# 5. Test
-sudo /usr/local/bin/healthcheck.sh
-cat /var/log/healthcheck.log 2>/dev/null || echo "Nginx was already healthy!"
+chmod +x /tmp/validate-capstone.sh
+/tmp/validate-capstone.sh
 ```
 
-Once completed, reset the node:
+---
+
+## Tier 1 Completion & Milestone Checkpoint
+
+Once all 5 validation checks pass, save your final Tier 1 snapshot from host PowerShell:
+
 ```powershell
-Reset-LabVM -Name "capstone-node" -Force
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "tier-1-complete"
 ```
+
+Congratulations! You have completed **Tier 1: Sysadmin Foundations**! You have built, partitioned, secured, diagnosed, and automated an enterprise Linux server from the ground up.
+
+Next, explore **[Tier 2: Advanced Systems Engineering](../../02-advanced-systems/README.md)** (LVM, RAID, Network Namespaces, SELinux, and Podman) or dive into **[Track 2: Hyper-V Internals](../../hyperv-internals/README.md)**!
+
+---
+
+### Navigation
+| [← Previous: Level 06: Linux Networking & Connectivity](../level-06-networking-and-connectivity/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Tier 2: Advanced Systems Roadmap →](../../02-advanced-systems/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 05: VM Architecture & Cloud-Init](../../hyperv-internals/05-vm-architecture-and-cloud-init/README.md)).*

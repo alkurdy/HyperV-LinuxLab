@@ -1,10 +1,10 @@
 # Level 06: Linux Networking & Remote Connectivity Diagnostics
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Computer Networking: A Top-Down Approach* & *CompTIA Network+*.
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Computer Networking: A Top-Down Approach* & *CompTIA Network+*.
 
 ---
 
-## 🎯 Objective
+## Objective
 Master modern Linux networking using the `iproute2` suite (`ip`, `ss`), navigate DNS resolution through `systemd-resolved`, configure static and DHCP interfaces (Netplan & NetworkManager), inspect active socket listeners, and administer host firewalls (`ufw` and `firewalld`).
 
 ---
@@ -132,7 +132,6 @@ sudo resolvectl flush-caches
 To find out what ports are open, which IP addresses they are bound to, and which process PID owns them:
 
 ```bash
-# The Canonical Sysadmin Command:
 # -t (TCP) -u (UDP) -l (Listening only) -p (Show Process Name & PID) -n (Numeric ports)
 sudo ss -tulpn
 ```
@@ -158,73 +157,145 @@ Both front-ends interact with the kernel's **nftables** / **netfilter** subsyste
 # View active firewall rules and numbered list
 sudo ufw status numbered
 
-# Allow inbound SSH on port 22
+# Default policies: block incoming, allow outgoing
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# CRITICAL RULE: Allow SSH before enabling to prevent instant lockout!
 sudo ufw allow 22/tcp
 
-# Allow traffic from a specific subnet to PostgreSQL
-sudo ufw allow from 10.0.0.0/24 to any port 5432 proto tcp
-
-# Delete rule #2
-sudo ufw delete 2
+# Allow application port 8080
+sudo ufw allow 8080/tcp
 
 # Enable firewall (rules persist across reboots)
 sudo ufw enable
 ```
 
-### RHEL / AlmaLinux: Firewalld (`firewall-cmd`)
-```bash
-# Query active zone and allowed services
-sudo firewall-cmd --get-active-zones
-sudo firewall-cmd --list-all
+---
 
-# Allow HTTPS permanently and reload
-sudo firewall-cmd --add-service=https --permanent
-sudo firewall-cmd --reload
+## Hands-On Lab: Exposing & Hardening Application Services
+
+We continue on **`sysadmin-node`** from Level 05. In Level 05, we built our background service. Now, we bind an HTTP listener, inspect socket tables with `ss`, trace routes, and secure the server with UFW.
+
+Connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
 ```
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Diagnostic Network Connectivity Triage
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Deploy or reuse your lab VM (`New-LabVM -Name "drill-06" -Start`):
+In this drill, we bind an HTTP service to port `8080`, verify TCP socket states, test DNS and routing, and configure stateful firewall rules with UFW.
 
-> [!TIP]
-> **Safety Net: Snapshot Before Modifying Firewalls & Netplan**  
-> Running `ufw enable` before allowing port 22 immediately severs your SSH session and locks you out. Snapshot first:
-> ```powershell
-> Checkpoint-LabVM -Name "drill-06" -SnapshotName "pre-network-drill"
-> ```
-> Locked out? Revert in 2 seconds:
-> ```powershell
-> Restore-LabVM -Name "drill-06" -SnapshotName "pre-network-drill" -Force
-> ```
-> Consolidate when finished:
-> ```powershell
-> Remove-LabCheckpoint -Name "drill-06" -All -Force
-> ```
+### 1. Upgrade App Service to Bind Port 8080
+- **Action**: Update `/srv/app/bin/worker.sh` to serve a lightweight HTTP response on port 8080 using Python, and restart the systemd service:
+  ```bash
+  cat << 'EOF' | sudo tee /srv/app/bin/worker.sh
+  #!/usr/bin/env bash
+  echo "[$(date)] Starting HTTP service on port 8080 as $(whoami)..." >> /var/log/app/worker.log
+  exec python3 -m http.server 8080 --directory /srv/app
+  EOF
+  sudo chmod +x /srv/app/bin/worker.sh
+  sudo systemctl restart production-app.service
+  ```
+- **System Reaction**:
+  The kernel allocates a TCP socket data structure, binds it to port `8080` on `0.0.0.0` (`INADDR_ANY`), and transitions the socket state from `CLOSED` to `LISTEN`. Systemd transitions the unit status and assigns the process to its cgroup.
+- **Verification**:
+  ```bash
+  sudo ss -tulpn | grep 8080
+  # Notice: Local Address is 0.0.0.0:8080, owned by python3 with PID of production-app.service
+  ```
 
-```bash
-# 1. Inspect interface topography
-ip -br addr
+### 2. Verify TCP Handshake & Outbound DNS Resolution
+- **Action**: Test the HTTP socket listener locally and query outbound DNS:
+  ```bash
+  # Test local HTTP handshake
+  curl -Iv http://localhost:8080
 
-# 2. Trace outbound routing and identify the default gateway
-ip route show default
+  # Query DNS resolver and upstream default route
+  resolvectl status | grep -E "Current DNS Server|DNS Servers"
+  ip route show default
+  ```
+- **System Reaction**:
+  `curl` initiates a standard TCP 3-way handshake (`SYN` -> `SYN-ACK` -> `ACK`). The kernel loopback driver routes packets through the `lo` interface. `resolvectl` queries the caching stub listener on `127.0.0.53:53`.
+- **Verification**:
+  ```bash
+  curl -s http://localhost:8080 | head -n 5
+  ```
 
-# 3. Test HTTP handshake and timing without downloading payload
-curl -Iv https://www.google.com
+### 3. Lock Down Perimeter Defense with UFW
+- **Action**: Configure UFW to enforce a default-deny posture, allow SSH (22) and app (8080), and enable the firewall:
+  ```bash
+  # 1. Set default policies
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
 
-# 4. Test remote TCP port reachability using netcat (nc)
-# (Test if port 443 is open on github.com with a 2-second timeout)
-nc -zvw 2 github.com 443
-# Returns: Connection to github.com 443 port [tcp/https] succeeded!
+  # 2. Allow SSH (PORT 22) - NEVER SKIP THIS STEP
+  sudo ufw allow 22/tcp comment "Management SSH"
 
-# 5. Spin up an ad-hoc Python web server and verify listener
-python3 -m http.server 9090 &
-SERVER_PID=$!
+  # 3. Allow Application Port 8080
+  sudo ufw allow 8080/tcp comment "Production Web API"
 
-# Confirm port 9090 is actively listening
-sudo ss -tulpn | grep 9090
+  # 4. Enable UFW
+  sudo ufw --force enable
+  ```
+- **System Reaction**:
+  UFW compiles the high-level rules into low-level `nftables` chains in the kernel's `netfilter` table. The kernel matches incoming packets against the chains in numbered order. Unsolicited incoming packets on any port other than 22 and 8080 are dropped immediately with zero TCP RST acknowledgment.
+- **Verification**:
+  ```bash
+  sudo ufw status verbose
+  ```
 
-# Clean up
-kill $SERVER_PID
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now complete an independent network security mission without answers provided.
+
+### The Mission: Subnet-Restricted Metrics Listener
+Operations needs a secondary metrics listener running on a custom port, but security policy requires that it be completely unreachable by the public, restricted strictly to local localhost requests.
+
+1. **Customization**:
+   - Choose your own metrics port (e.g. `9090`, `9100`, or `8443`).
+   - Launch a background listener on that port bound strictly to loopback `127.0.0.1` (e.g. using `python3 -m http.server <port> --bind 127.0.0.1 &`).
+
+2. **Acceptance Criteria**:
+   - The listener is actively running and verified via `ss -tulpn`.
+   - The local address in `ss` output must show `127.0.0.1:<port>` (NOT `0.0.0.0:<port>`).
+   - Configure a UFW rule allowing access to that specific port only from `127.0.0.1`.
+   - Confirm via `curl` that queries from localhost succeed.
+
+3. **Self-Verification**:
+   Execute this test suite to validate your implementation:
+   ```bash
+   # Replace with your chosen metrics port
+   METRICS_PORT=9090
+
+   echo "--- Validating Restricted Listener on Port $METRICS_PORT ---"
+   # Test 1: Active listener on loopback
+   sudo ss -tulpn | grep "127.0.0.1:$METRICS_PORT" >/dev/null 2>&1 && echo "[PASS] Bound strictly to loopback" || echo "[FAIL] Not bound to 127.0.0.1!"
+
+   # Test 2: Local HTTP response
+   curl -s --connect-timeout 2 "http://127.0.0.1:$METRICS_PORT" >/dev/null 2>&1 && echo "[PASS] Local HTTP reachability confirmed" || echo "[FAIL] HTTP connection failed!"
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Save your milestone snapshot from host PowerShell:
+
+```powershell
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-06-complete"
 ```
+
+In [Level 07](../level-07-automation-bash-and-package-lifecycle/README.md), you will face the **Tier 1 Grand Capstone Drill**! You will write defensive self-healing automation, package management scripts, and resolve an unguided multi-layer production outage spanning permissions, storage mounts, systemd services, and firewalls!
+
+---
+
+### Navigation
+| [← Previous: Level 05: Processes, Systemd & Signals](../level-05-processes-systemd-and-signals/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 07: Automation, Bash & Capstone →](../level-07-automation-bash-and-package-lifecycle/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 03: Virtual Networking & Guest IP Routing](../../hyperv-internals/03-virtual-networking/README.md)).*

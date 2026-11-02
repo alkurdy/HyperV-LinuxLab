@@ -1,6 +1,6 @@
-﻿# Hyper-V Tutorial 02: Hyper-V Installation, Reboot Lifecycle & Clean Removal
+# Hyper-V Tutorial 02: Hyper-V Installation, Reboot Lifecycle & Clean Removal
 
-> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 03: Virtual Networking â†’](../03-virtual-networking/README.md)
+> **[Tutorials Hub](../../README.md)** • **[Hyper-V Internals Track](../README.md)** • [← Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) • [Index](../../README.md) • [Next: Hyper-V 03: Virtual Networking →](../03-virtual-networking/README.md)
 
 ---
 Now that we've got host prerequisites verified, let's look at installing the Hyper-V role—and just as importantly, how to cleanly remove it when you want to start fresh or troubleshoot a broken state.
@@ -184,8 +184,8 @@ Now that we've got Hyper-V installed, verified, and operational, let's explore *
 
 ---
 
-### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 03: Virtual Networking â†’](../03-virtual-networking/README.md) |
+### Navigation
+| [← Previous: Hyper-V 01: Prerequisites](../01-prerequisites-and-hardware/README.md) | [Tutorials Index](../../README.md) | [Next: Hyper-V 03: Virtual Networking →](../03-virtual-networking/README.md) |
 | :--- | :---: | ---: |
 
-*(Related topic: See [Lab 01: Deploying Your Linux Lab](../../linux/01-deployment-and-ssh/README.md)).*
+*(Related topic: See [Linux Level 01: Mental Model & Architecture](../../01-sysadmin-foundations/level-01-mental-model-and-architecture/README.md)).*

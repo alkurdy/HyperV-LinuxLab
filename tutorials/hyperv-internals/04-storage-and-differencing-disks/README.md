@@ -1,6 +1,6 @@
-﻿# Hyper-V Tutorial 04: Virtual Storage & Differencing Disks
+# Hyper-V Tutorial 04: Virtual Storage & Differencing Disks
 
-> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](../05-vm-architecture-and-cloud-init/README.md)
+> **[Tutorials Hub](../../README.md)** • **[Hyper-V Internals Track](../README.md)** • [← Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) • [Index](../../README.md) • [Next: Hyper-V 05: VM Architecture & Cloud-Init →](../05-vm-architecture-and-cloud-init/README.md)
 
 ---
 Now that our virtual network and IP discovery are solid, let's look at storage. So you want to spin up a 3-node Kubernetes cluster or multi-distro testbed, but you don't want to burn 60 GB of disk space or wait 15 minutes for full disk clones—how do we spin up fresh VMs in seconds using almost no space?
@@ -188,8 +188,8 @@ Now that our storage and differencing disk architecture is clear, let's explore 
 
 ---
 
-### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Hyper-V 05: VM Architecture & Cloud-Init â†’](../05-vm-architecture-and-cloud-init/README.md) |
+### Navigation
+| [← Previous: Hyper-V 03: Virtual Networking](../03-virtual-networking/README.md) | [Tutorials Index](../../README.md) | [Next: Hyper-V 05: VM Architecture & Cloud-Init →](../05-vm-architecture-and-cloud-init/README.md) |
 | :--- | :---: | ---: |
 
-*(Related topic: See [Lab 04: Snapshots & Disaster Recovery](../../linux/04-snapshots-and-disaster-recovery/README.md)).*
+*(Related topic: See [Linux Level 03: Directory Hierarchy & Storage](../../01-sysadmin-foundations/level-03-directory-hierarchy-and-storage/README.md)).*

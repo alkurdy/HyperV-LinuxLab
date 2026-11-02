@@ -1,10 +1,10 @@
 # Level 04: Troubleshooting, Logging & Diagnostics Engineering
 
-> **Tier 1: Sysadmin Foundations** • Grounded in *Site Reliability Engineering* & *Linux Cookbook* (Schroder).
+> **[Tier 1: Sysadmin Foundations](../README.md)** • Grounded in *Site Reliability Engineering* & *Linux Cookbook* (Schroder).
 
 ---
 
-## 🎯 Objective
+## Objective
 Learn where Linux records failures, how to parse system logs, how to query systemd journal archives, how to detect hardware and kernel panic events via `dmesg`, and how to triage high-severity production outages (OOM Killer, Inode exhaustion, and unlinked open file handle leaks).
 
 ---
@@ -94,7 +94,7 @@ sudo dmesg -T | head -n 20
 sudo dmesg -T | grep -i -E "oom|out of memory|killed process"
 
 # View process OOM scores (higher = more likely to be killed first)
-cat /proc/$(pgrep nginx | head -n 1)/oom_score
+cat /proc/$(pgrep -f "systemd" | head -n 1)/oom_score
 ```
 
 ---
@@ -129,64 +129,140 @@ sudo truncate -s 0 /proc/1420/fd/3
 
 ---
 
-## 6. Log Rotation: `/etc/logrotate.d/`
+## Hands-On Lab: Live Incident Triage Under Pressure
 
-To prevent `/var/log` from consuming 100% of the root disk, Linux executes `logrotate` via cron/systemd timers:
-
-```bash
-# Inspect logrotate configuration for Nginx or Syslog
-cat /etc/logrotate.d/rsyslog
-
-# Force a manual dry-run of logrotate with verbose debug output
-sudo logrotate -d /etc/logrotate.conf
-
-# Force immediate execution
-sudo logrotate -f /etc/logrotate.conf
+We continue on **`sysadmin-node`** from Level 03. Connect via SSH:
+```powershell
+ssh labadmin@<VM_IP>
 ```
 
 ---
 
-## 🛠️ Hands-On Lab Drill: Diagnostic Triage Under Pressure
+## Part A: Guided Architectural Drill (Action & Reaction)
 
-Deploy or reuse your lab VM (`New-LabVM -Name "drill-04" -Start`):
+In this drill, we simulate a severe storage leak on our `/srv/app` volume from Level 03, diagnose why standard tools disagree, trace the culprit with `lsof` and `journalctl`, and recover the filesystem live.
 
-> [!TIP]
-> **Safety Net: Snapshot Before Simulating Outages**  
-> Before leaking open file handles or running processes out of memory, take a snapshot:
-> ```powershell
-> Checkpoint-LabVM -Name "drill-04" -SnapshotName "pre-outage-drill"
-> ```
-> Revert instantly if the system becomes unresponsive:
-> ```powershell
-> Restore-LabVM -Name "drill-04" -SnapshotName "pre-outage-drill" -Force
-> ```
-> Consolidate when finished:
-> ```powershell
-> Remove-LabCheckpoint -Name "drill-04" -All -Force
-> ```
+### 1. Simulate the Unlinked File Handle Leak
+- **Action**: Create a 200MB file on `/srv/app`, open it with a background Python process, and immediately delete it with `rm`:
+  ```bash
+  # Check initial free space on /srv/app
+  df -h /srv/app
 
-```bash
-# 1. Investigate authentication logs for failed login attempts
-# (Simulate a failed login by attempting SSH with an invalid user)
-sudo grep -i "failed" /var/log/auth.log | tail -n 10
+  # Allocate 200MB on /srv/app
+  sudo dd if=/dev/urandom of=/srv/app/leak.dat bs=1M count=200
 
-# 2. Simulate Outage B (Open File Descriptor Leak)
-# Create a 200MB file and hold it open with a background python process
-dd if=/dev/urandom of=/tmp/leak.dat bs=1M count=200
-python3 -c "f = open('/tmp/leak.dat'); import time; time.sleep(300)" &
-PY_PID=$!
+  # Open the file descriptor in a background process
+  python3 -c "f = open('/srv/app/leak.dat'); import time; time.sleep(600)" &
+  LEAK_PID=$!
 
-# Now delete the file while python holds it open
-rm /tmp/leak.dat
+  # Delete the file while the python process holds it open
+  sudo rm -f /srv/app/leak.dat
+  ```
+- **System Reaction**:
+  `rm` issues the `unlink(2)` syscall. The VFS removes the filename `leak.dat` from the `/srv/app` directory inode table. However, because `LEAK_PID` still holds an open file descriptor pointing to the inode, the kernel's reference counter remains `1`. **The disk blocks are NOT freed.**
+- **Verification**:
+  Notice the discrepancy between `ls` and `df`:
+  ```bash
+  ls -l /srv/app/leak.dat
+  # Returns: No such file or directory!
 
-# Verify the file is invisible to 'ls' but still consuming disk space
-ls /tmp/leak.dat  # Returns: No such file or directory!
+  df -h /srv/app
+  # Notice: The 200MB is STILL consumed!
+  ```
 
-# Run diagnostic tool to expose the phantom file
-sudo lsof +L1 | grep leak.dat
-# Notice: reports (deleted) and displays the size!
+### 2. Expose the Phantom File via `lsof +L1`
+- **Action**: Query the kernel's open file descriptor table for unlinked files with link count less than 1:
+  ```bash
+  sudo lsof +L1 | grep "/srv/app"
+  ```
+- **System Reaction**:
+  `lsof` inspects `/proc/*/fd/` across all running processes. It surfaces the exact process name, PID, file descriptor number, size, and marks it as `(deleted)`.
+- **Verification**:
+  ```bash
+  # Inspect the file descriptor directly in the /proc filesystem
+  ls -l /proc/$LEAK_PID/fd
+  ```
 
-# Kill the rogue process to finally release the disk blocks
-kill -9 $PY_PID
-sudo lsof +L1 | grep leak.dat # Gone! Disk blocks recovered.
+### 3. Recover Disk Capacity Live Without Rebooting
+- **Action**: Terminate the rogue process and observe the immediate kernel block recovery:
+  ```bash
+  # Terminate rogue process
+  kill -15 $LEAK_PID
+
+  # Verify open file descriptors are released
+  sudo lsof +L1 | grep "/srv/app" || echo "[OK] All deleted handles released!"
+  ```
+- **System Reaction**:
+  When process `$LEAK_PID` terminates, the kernel invokes `exit(2)`, which automatically closes all open file descriptors for that process. The inode reference counter drops from `1` to `0`. The ext4 filesystem driver frees the data block bitmaps and returns the 200MB back to the free pool immediately!
+- **Verification**:
+  ```bash
+  df -h /srv/app
+  # The 200MB capacity is instantly reclaimed!
+  ```
+
+### 4. Query Structured Logs via `journalctl`
+- **Action**: Filter authentication logs for failed login attempts and examine boot logs:
+  ```bash
+  # Check system error log messages from current boot
+  sudo journalctl -b -p err..emerg -n 20
+
+  # Query auth logs for failed login attempts
+  sudo grep -i "failed" /var/log/auth.log | tail -n 10 || echo "Clean auth state."
+  ```
+- **System Reaction**:
+  `journalctl` queries the binary structured database in `/run/log/journal/`. Because the journal is indexed by metadata fields (`_PID`, `_UID`, `_SYSTEMD_UNIT`, `PRIORITY`), lookups finish in milliseconds without linear file scanning.
+
+---
+
+## Part B: Admin Solo Drill (Unguided Mission)
+
+Now complete an independent troubleshooting mission without answers provided.
+
+### The Mission: Inode Saturation Triage & Incident Audit
+A misbehaving script has flooded `/srv/app/tmp` with thousands of zero-byte session tokens, threatening an Inode exhaustion outage.
+
+1. **Customization & Setup**:
+   Simulate the issue by generating 5,000 empty session files inside `/srv/app/tmp`:
+   ```bash
+   sudo mkdir -p /srv/app/tmp
+   sudo bash -c 'for i in $(seq 1 5000); do touch /srv/app/tmp/sess_$i.tmp; done'
+   ```
+
+2. **Acceptance Criteria**:
+   - Check the inode consumption on `/srv/app` using `df -i`.
+   - Identify which directory is consuming the excessive inode count without scanning the entire disk.
+   - Safely purge all temporary session files (`*.tmp`) older than 0 minutes inside `/srv/app/tmp` without deleting the directory or affecting other files.
+   - Generate an incident summary report in `/var/log/sysadmin/incident-report.txt` stating the timestamp, the number of files purged, and the current inode free percentage on `/srv/app`.
+
+3. **Self-Verification**:
+   Execute this check to validate your remediation:
+   ```bash
+   REPORT="/var/log/sysadmin/incident-report.txt"
+
+   # Check 1: Inodes cleaned
+   REMAINING=$(find /srv/app/tmp -type f -name "*.tmp" | wc -l)
+   test "$REMAINING" -eq 0 && echo "[PASS] Inode exhauster files purged" || echo "[FAIL] Still $REMAINING files present!"
+
+   # Check 2: Incident report generated
+   test -s "$REPORT" && grep -E "INODE|PURGED" "$REPORT" >/dev/null && echo "[PASS] Incident report verified" || echo "[FAIL] Missing incident report"
+   ```
+
+---
+
+## Milestone Checkpoint
+
+Save your milestone snapshot from host PowerShell:
+
+```powershell
+Checkpoint-LabVM -Name "sysadmin-node" -SnapshotName "level-04-complete"
 ```
+
+In [Level 05](../level-05-processes-systemd-and-signals/README.md), we will build a real production systemd service that runs under the `svc-app` service account (from Level 02), logs to `/var/log/app` on the storage volume (from Level 03), and handles POSIX process signals with automatic self-healing restart!
+
+---
+
+### Navigation
+| [← Previous: Level 03: Directory Hierarchy & Storage](../level-03-directory-hierarchy-and-storage/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 05: Processes, Systemd & Signals →](../level-05-processes-systemd-and-signals/README.md) |
+| :--- | :---: | ---: |
+
+*(Related topic: See [Hyper-V Tutorial 06: VM Lifecycle & Telemetry](../../hyperv-internals/06-vm-lifecycle-and-telemetry/README.md)).*

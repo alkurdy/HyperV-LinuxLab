@@ -226,3 +226,50 @@ Available distributions in `New-LabBaseImage`:
   - Documented PowerShell Module Qualification (`Hyper-V\New-VMSwitch`, `Hyper-V\Get-VM`) across tutorials and specification to explain collision prevention with third-party tools like VMware PowerCLI.
   - 100% internal markdown links verified, zero machine-specific paths committed.
 - **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-11-02T10:33:00-05:00] PHASE 13: Tutorial Navigation Encoding Repair & Emoji Minimization
+- **Issue**:
+  - Legacy double-encoded UTF-8 bytes and BOM in `tutorials/hyperv-internals/` caused mojibake glitches (`â€¢`, `â†`, `ðŸ“‘`, `ðŸ§­`).
+  - Outdated cross-track links pointed to removed `../../linux/0*` paths.
+- **Resolution**:
+  - Stripped decorative emojis (`📑`, `🧭`) from breadcrumbs, headings, and navigation tables across all Hyper-V internals tutorials.
+  - Replaced corrupted arrows and bullets with clean UTF-8 text symbols (`←`, `→`, `•`).
+  - Fixed cross-track breadcrumb links to align with unified `01-sysadmin-foundations/` hierarchy.
+  - Saved all markdown files as standard UTF-8 without BOM.
+- **Files Modified**:
+  - `tutorials/hyperv-internals/README.md`
+  - `tutorials/hyperv-internals/01-prerequisites-and-hardware/README.md`
+  - `tutorials/hyperv-internals/02-installation-and-removal/README.md`
+  - `tutorials/hyperv-internals/03-virtual-networking/README.md`
+  - `tutorials/hyperv-internals/04-storage-and-differencing-disks/README.md`
+  - `tutorials/hyperv-internals/05-vm-architecture-and-cloud-init/README.md`
+  - `tutorials/hyperv-internals/06-vm-lifecycle-and-telemetry/README.md`
+- **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-11-02T10:41:00-05:00] PHASE 14: Tier 1 Layered Continuous Server Curriculum Architecture & Unguided Solo Drills
+- **Pedagogical Redesign**:
+  - Replaced isolated throwaway drill VMs (`drill-01`, `drill-02`, etc.) with a single continuous enterprise Linux server lifecycle (`sysadmin-node`).
+  - Structured every level into a two-part learning architecture:
+    - **Part A (Guided Architectural Drill)**: Explicit **Action & System Reaction** sections explaining what the Linux kernel, VFS, systemd, or network stack is doing under the surface, paired with verification commands.
+    - **Part B (Admin Solo Drill)**: Unguided missions with customizable parameters (usernames, directories, ports), explicit acceptance criteria, zero copy-paste solution scripts, and automated self-verification validator scripts.
+  - Layered lifecycle across all 7 levels:
+    - Level 01: Audit host bare metal baseline, kernel VFS, create admin profile on `sysadmin-node`.
+    - Level 02: Build `appteam`, `svc-app`, provision `/srv/app` and `/var/log/app` with SGID (`2775`) & default POSIX ACLs.
+    - Level 03: Partition dedicated block disk, format Ext4, mount persistently to `/srv/app` via UUID in `/etc/fstab`, enable swap.
+    - Level 04: Simulate and triage live unlinked open file handle leak on `/srv/app` (`lsof +L1`), recover blocks without reboot.
+    - Level 05: Deploy production systemd unit under `svc-app` writing to `/var/log/app`, test SIGKILL self-healing restart, author systemd timer.
+    - Level 06: Bind HTTP listener to port 8080, inspect sockets with `ss -tulpn`, verify DNS/routes, lock down UFW firewall.
+    - Level 07: Defensive Bash automation (`set -euo pipefail`), unguided multi-layer break-fix capstone across storage, permissions, systemd, and firewall.
+- **Files Modified**:
+  - `tutorials/README.md`
+  - `tutorials/01-sysadmin-foundations/README.md`
+  - `tutorials/01-sysadmin-foundations/level-01-mental-model-and-architecture/README.md`
+  - `tutorials/01-sysadmin-foundations/level-02-identity-users-and-permissions/README.md`
+  - `tutorials/01-sysadmin-foundations/level-03-directory-hierarchy-and-storage/README.md`
+  - `tutorials/01-sysadmin-foundations/level-04-troubleshooting-logs-and-diagnostics/README.md`
+  - `tutorials/01-sysadmin-foundations/level-05-processes-systemd-and-signals/README.md`
+  - `tutorials/01-sysadmin-foundations/level-06-networking-and-connectivity/README.md`
+  - `tutorials/01-sysadmin-foundations/level-07-automation-bash-and-package-lifecycle/README.md`
+- **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+

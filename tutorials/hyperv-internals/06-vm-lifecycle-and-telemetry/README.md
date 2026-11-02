@@ -1,6 +1,6 @@
-﻿# Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation
+# Hyper-V Tutorial 06: VM Lifecycle, Telemetry & Automation
 
-> **[Tutorials Hub](../../README.md)** â€¢ **[Hyper-V Internals Track](../README.md)** â€¢ [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) â€¢ [ðŸ“‘ Index](../../README.md) â€¢ [Next: Lab 01: Deploying Your Linux Lab â†’](../../linux/01-deployment-and-ssh/README.md)
+> **[Tutorials Hub](../../README.md)** • **[Hyper-V Internals Track](../README.md)** • [← Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) • [Index](../../README.md) • [Linux Track: Sysadmin Foundations →](../../01-sysadmin-foundations/README.md)
 
 ---
 Now that our VM is running and provisioned, let's look at day-2 operations. So you want to manage multiple running VMs, recall their dynamic IP addresses and passphrases, monitor resource consumption, and automate cluster startups without clicking through the Hyper-V GUI—how do we automate the complete lifecycle from the command line?
@@ -247,8 +247,8 @@ Armed with this knowledge, you can use the high-level cmdlets in **`HyperV-Linux
 
 ---
 
-### ðŸ§­ Navigation
-| [â† Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) | [ðŸ“‘ Tutorials Index](../../README.md) | [Next: Lab 01: Deploying Your Linux Lab â†’](../../linux/01-deployment-and-ssh/README.md) |
+### Navigation
+| [← Previous: Hyper-V 05: VM Architecture & Cloud-Init](../05-vm-architecture-and-cloud-init/README.md) | [Tutorials Index](../../README.md) | [Linux Track: Sysadmin Foundations →](../../01-sysadmin-foundations/README.md) |
 | :--- | :---: | ---: |
 
-*(Related topic: See [Lab 05: Multi-Distro Clusters](../../linux/05-multi-distro-clusters/README.md)).*
+*(Related topic: See [Linux Level 07: Automation & Bash](../../01-sysadmin-foundations/level-07-automation-bash-and-package-lifecycle/README.md)).*

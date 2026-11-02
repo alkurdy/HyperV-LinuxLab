@@ -1,6 +1,6 @@
 # Track 2: Hyper-V Systems Engineering Curriculum
 
-> **[Tutorials Hub](../README.md)** • **Hyper-V Internals Track** • [Switch to Linux Lab Track →](../linux/README.md)
+> **[Tutorials Hub](../README.md)** • **Hyper-V Internals Track** • [Switch to Linux Lab Track →](../01-sysadmin-foundations/README.md)
 
 Welcome to the **Hyper-V Systems Engineering** track of the HyperV-LinuxLab curriculum.
 
@@ -8,7 +8,7 @@ This track is designed for cloud architects, platform engineers, and Windows adm
 
 ---
 
-## 🧭 Tutorial Directory
+## Tutorial Directory
 
 | # | Tutorial Folder | What You Will Learn | Est. Time |
 | :---: | :--- | :--- | :---: |
@@ -21,6 +21,6 @@ This track is designed for cloud architects, platform engineers, and Windows adm
 
 ---
 
-### 🧭 Navigation
+### Navigation
 | [← Back to Master Tutorials Hub](../README.md) | [Start Hyper-V 01: Prerequisites & Silicon →](01-prerequisites-and-hardware/README.md) |
 | :--- | ---: |
