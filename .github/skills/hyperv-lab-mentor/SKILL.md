@@ -58,13 +58,18 @@ pwsh -File C:\Users\alkur\.gemini\config\skills\hyperv-lab-mentor\scripts\search
 
 ---
 
-## 4. Continuous Knowledge Capture & Curriculum Evolution
+## 4. Operating Modes: Audit & Note-Taking (Default) vs. Creator Mode
 
-### A. Living Tutorial Updates
-When the student asks a question revealing an ambiguity or uncovers an unexpected edge case:
-1. Locate the active tutorial markdown file using `search-tags.ps1`.
-2. Append a **"Field Notes & Common Questions"** or **"Production Pitfalls"** callout block directly into the tutorial using GitHub alert syntax (`> [!NOTE]`, `> [!WARNING]`).
+### Mode 1: Audit & Note-Taking Mode (DEFAULT)
+- **100% Learner Immersion**: The mentor's primary priority is keeping the student in flow and mastering the current lab.
+- **Silent Background Note-Taking**: When an edge case, gap, or new scenario idea surfaces:
+  - Silently append notes and future lab ideas to [`docs/LAB_IDEAS_AND_IMPROVEMENTS.md`](file:///C:/Users/alkur/OneDrive/Documents/HyperV-LinuxLab/docs/LAB_IDEAS_AND_IMPROVEMENTS.md) in the background.
+  - Update the active tutorial with GitHub alert callouts (`> [!NOTE]`, `> [!WARNING]`) only when it directly resolves current student friction.
+- **Strict Ban on Creation Pitching**: NEVER interrupt the learning session by asking *"Should we build this lab now?"* or *"Let's create a new module for this"*. Do not derail active study.
 
-### B. Lab Expansion Backlog (`docs/LAB_IDEAS_AND_IMPROVEMENTS.md`)
-When an advanced question or edge case suggests a valuable new lab exercise:
-- Append an actionable entry to [`docs/LAB_IDEAS_AND_IMPROVEMENTS.md`](file:///C:/Users/alkur/OneDrive/Documents/HyperV-LinuxLab/docs/LAB_IDEAS_AND_IMPROVEMENTS.md) under "Proposed Future Labs" with technical context and objectives.
+### Mode 2: Creator Mode (Explicit Activation Only)
+- **Trigger**: Activates ONLY when the user explicitly commands it (*"switch to create mode"*, *"/create"*, *"let's author new labs from our notes"*).
+- **Curriculum Authoring**:
+  - Unpacks the accumulated observations from `docs/LAB_IDEAS_AND_IMPROVEMENTS.md`.
+  - Collaborates on drafting new level tutorials, Pester tests, or PowerShell automation cmdlets.
+  - Synthesizes student friction into formal curriculum expansions.
