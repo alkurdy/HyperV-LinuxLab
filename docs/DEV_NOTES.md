@@ -311,3 +311,18 @@ Available distributions in `New-LabBaseImage`:
   - `tutorials/README.md`: Integrated Track 3: Academic Bridges into master architecture diagram and navigation directory.
 - **Verification**: 0 mojibake characters, 0 UTF-8 BOMs, 100% relative markdown links verified.
 - **Pester Results**: 98 tests total, 0 failed, 0 skipped. Zero PSScriptAnalyzer errors or warnings.
+
+### [2026-11-16T14:54:00-05:00] PHASE 17: Cloud-Init YAML Formatting Repair, Multi-Key Auto-Discovery & Field Note Capture
+- **Root Cause & Resolution**:
+  - `New-LabCloudInitISO.ps1` previously generated invalid YAML due to `echo 'datasource_list...'` in `bootcmd:` causing quoted scalar syntax crashes (`Failed loading yaml blob: while scanning a quoted scalar`), and misindented `ssh_pwauth: true`.
+  - Cloud-init dropped the user-data configuration payload and fell back to `DataSourceNone`, leaving the VM unprovisioned without `labadmin` or SSH keys.
+  - Resolved by declaring `datasource_list: [ NoCloud, None ]` natively at root YAML level.
+  - Implemented multi-key auto-discovery across all `~/.ssh/*.pub` public keys so any local SSH key (passphrase or passwordless) authenticates cleanly.
+  - Updated `tutorials/hyperv-internals/05-vm-architecture-and-cloud-init/README.md` with explicit field note warning on Cloud-Init quoted scalar pitfalls.
+- **Files Modified**:
+  - `Public/New-LabCloudInitISO.ps1`
+  - `tutorials/hyperv-internals/05-vm-architecture-and-cloud-init/README.md`
+  - `docs/DEV_NOTES.md`
+- **Validation**:
+  - Verified live SSH key login (`ssh labadmin@172.17.194.136`) on `sysadmin-node` returning exit code 0.
+  - Pester test suite passed.

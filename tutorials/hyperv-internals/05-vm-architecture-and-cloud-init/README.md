@@ -111,15 +111,19 @@ Upstream cloud images published for Hyper-V often come pre-configured with the *
 2. It attempts to read Azure datacenter fabric configuration (`ovf-env.xml`).
 3. In a local lab, it hangs the boot process for 5 to 10 minutes polling for the Azure fabric controller!
 
-Mask `walinuxagent` in the `bootcmd` section of `#cloud-config` to achieve fast 10-second boots:
+Mask `walinuxagent` and explicitly declare the `datasource_list` at the root of `#cloud-config` to achieve fast 10-second boots:
 ```yaml
+datasource_list: [ NoCloud, None ]
 bootcmd:
   - systemctl mask --now walinuxagent.service waagent.service 2>/dev/null || true
   - systemctl stop --now walinuxagent.service waagent.service 2>/dev/null || true
   - mkdir -p /var/lib/waagent
   - touch /var/lib/waagent/ovf-env.xml
-  - echo 'datasource_list: [ NoCloud, None ]' > /etc/cloud/cloud.cfg.d/99-nocloud.cfg
 ```
+
+> [!WARNING]
+> **Cloud-Init Quoted Scalar & Datasource Pitfall**:
+> Never inject shell redirection strings like `echo 'datasource_list...' > file` into unquoted YAML `bootcmd:` entries. The mixed quotes cause the YAML parser to crash (`Failed loading yaml blob: while scanning a quoted scalar`). When cloud-init encounters invalid YAML, it silently drops the entire user configuration payload, falling back to `DataSourceNone` and skipping user account and SSH key generation! Always use top-level `datasource_list: [ NoCloud, None ]`.
 
 ---
 

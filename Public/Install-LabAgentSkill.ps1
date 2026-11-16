@@ -53,7 +53,7 @@ function Install-LabAgentSkill {
     }
 
     if ($deployed.Count -gt 0) {
-        Write-Host "[OK] Deployed HyperV-LinuxLab AI Mentor to: $($deployed -join ', ')" -ForegroundColor Green
+        Write-Information "[OK] Deployed HyperV-LinuxLab AI Mentor to: $($deployed -join ', ')" -InformationAction Continue
     } else {
         Write-Verbose "AI mentor skill is already up to date across all detected agent platforms."
     }

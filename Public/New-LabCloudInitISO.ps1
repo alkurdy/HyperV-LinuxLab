@@ -69,25 +69,27 @@ function New-LabCloudInitISO {
         $RunCommands = $combinedCmds
     }
 
-    # Auto-discover SSH key if not provided
+    # Auto-discover SSH keys if not provided
+    $discoveredKeys = @()
     if (-not $SSHAuthorizedKey) {
-        $keyPaths = @(
-            (Join-Path $env:USERPROFILE ".ssh\id_ed25519.pub"),
-            (Join-Path $env:USERPROFILE ".ssh\id_rsa.pub")
-        )
-        foreach ($kp in $keyPaths) {
-            if (Test-Path $kp) {
-                $SSHAuthorizedKey = (Get-Content $kp -Raw).Trim()
-                Write-Verbose "Discovered local SSH key: $kp"
-                break
+        $sshDir = Join-Path $env:USERPROFILE ".ssh"
+        if (Test-Path $sshDir) {
+            $pubFiles = Get-ChildItem -Path $sshDir -Filter "*.pub" -ErrorAction SilentlyContinue
+            foreach ($pf in $pubFiles) {
+                $keyContent = (Get-Content $pf.FullName -Raw).Trim()
+                if ($keyContent -match '^ssh-(ed25519|rsa|ecdsa)') {
+                    $discoveredKeys += $keyContent
+                    Write-Verbose "Discovered local SSH key: $($pf.Name)"
+                }
             }
         }
-    }
-
-    if (-not $SSHAuthorizedKey) {
-        Write-Warning "No SSH key provided or discovered in ~/.ssh/. Generating fallback cloud-init without SSH authentication."
+        if ($discoveredKeys.Count -eq 0) {
+            Write-Warning "No SSH keys discovered in ~/.ssh/. Generating fallback cloud-init without SSH authentication."
+        }
     } elseif (Test-Path $SSHAuthorizedKey) {
-        $SSHAuthorizedKey = (Get-Content $SSHAuthorizedKey -Raw).Trim()
+        $discoveredKeys += (Get-Content $SSHAuthorizedKey -Raw).Trim()
+    } else {
+        $discoveredKeys += $SSHAuthorizedKey.Trim()
     }
 
     # Build meta-data
@@ -114,15 +116,18 @@ local-hostname: $Name
 
     $null = $sb.AppendLine("    plain_text_passwd: '$plainPass'")
     $null = $sb.AppendLine("    lock_passwd: false")
-    $null = $sb.AppendLine("ssh_pwauth: true")
 
-    if ($SSHAuthorizedKey) {
+    if ($discoveredKeys.Count -gt 0) {
         $null = $sb.AppendLine("    ssh_authorized_keys:")
-        $null = $sb.AppendLine("      - $SSHAuthorizedKey")
+        foreach ($k in ($discoveredKeys | Select-Object -Unique)) {
+            $null = $sb.AppendLine("      - $k")
+        }
     }
 
+    $null = $sb.AppendLine("ssh_pwauth: true")
     $null = $sb.AppendLine("package_update: true")
     $null = $sb.AppendLine("package_upgrade: false")
+    $null = $sb.AppendLine("datasource_list: [ NoCloud, None ]")
 
     # Disable and mask Azure guest agent (walinuxagent) to prevent ovf-env.xml polling loop
     $null = $sb.AppendLine("bootcmd:")
@@ -130,7 +135,6 @@ local-hostname: $Name
     $null = $sb.AppendLine("  - systemctl stop --now walinuxagent.service waagent.service 2>/dev/null || true")
     $null = $sb.AppendLine("  - mkdir -p /var/lib/waagent")
     $null = $sb.AppendLine("  - touch /var/lib/waagent/ovf-env.xml")
-    $null = $sb.AppendLine("  - echo 'datasource_list: [ NoCloud, None ]' > /etc/cloud/cloud.cfg.d/99-nocloud.cfg")
 
     if ($Packages -and $Packages.Count -gt 0) {
         $null = $sb.AppendLine("packages:")
@@ -176,7 +180,7 @@ local-hostname: $Name
             Username = $Username
             Password = $plainPass
             Profile  = if ($Profile) { $Profile } else { "None" }
-            HasSSH   = [bool]$SSHAuthorizedKey
+            HasSSH   = ($discoveredKeys.Count -gt 0)
         }
     }
 }
