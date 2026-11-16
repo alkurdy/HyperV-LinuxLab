@@ -224,10 +224,37 @@ Run from your host elevated PowerShell console:
 ```powershell
 New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
 ```
-Note the IP address from the output, then connect via SSH:
-```powershell
-ssh labadmin@<VM_IP>
-```
+
+### SSH Connection & Credential Architecture
+
+`HyperV-LinuxLab` automates first-boot operating system initialization via **Cloud-Init** using a synthetic NoCloud ISO volume:
+
+1. **Automatic SSH Public Key Injection**:
+   - `New-LabVM` inspects your host `~/.ssh/` directory and auto-discovers all active public keys (`id_ed25519.pub`, `id_rsa.pub`, etc.).
+   - All discovered keys are automatically added to `/home/labadmin/.ssh/authorized_keys`.
+   - Connect using standard SSH:
+     ```powershell
+     ssh labadmin@<VM_IP>
+     ```
+   - If your private key has a passphrase, OpenSSH will prompt for it. If you maintain multiple identity keys:
+     ```powershell
+     ssh -i ~/.ssh/id_ed25519 labadmin@<VM_IP>
+     ```
+
+2. **Ephemeral Console Passphrase (Safety Net)**:
+   - Every provisioned node generates a secure random password displayed in the green success banner (e.g. `Password: Green-Rabbit-95`).
+   - If you ever forget the password or need to log in via console / password auth, query metadata from host PowerShell:
+     ```powershell
+     Get-LabVM -Name "sysadmin-node"
+     ```
+
+3. **Troubleshooting Reassigned IPs (`known_hosts` Mismatch)**:
+   - Hyper-V Default Switch DHCP re-uses IP addresses across destroyed and recreated VMs.
+   - If you see `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!`, clear the stale cached SSH fingerprint from your host console:
+     ```powershell
+     ssh-keygen -R <VM_IP>
+     ```
+   - Then reconnect.
 
 ---
 

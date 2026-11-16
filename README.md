@@ -108,9 +108,14 @@ New-LabVM -Name "linux-box" -MemoryGB 2 -CPUCount 2 -Start
 *Your VM boots in ~15 seconds and automatically displays its assigned IP address.*
 
 ### 6. Connect via SSH
+`New-LabVM` automatically discovers all public keys in your host `~/.ssh/` and injects them into the VM:
 ```powershell
 ssh labadmin@<VM_IP>
 ```
+*Tips*:
+- To specify a key: `ssh -i ~/.ssh/id_ed25519 labadmin@<VM_IP>`
+- To retrieve the auto-generated console password: `Get-LabVM -Name "linux-box"`
+- If Hyper-V DHCP reuses an old IP and throws a host key warning: `ssh-keygen -R <VM_IP>`
 
 ### 7. Instant Reset to Factory State (Sub-5 Seconds!)
 Broke the OS? Network stack corrupt? Messed up a Kubernetes installation? Reset back to factory clean state in 3 seconds:
