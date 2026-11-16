@@ -285,6 +285,24 @@ Execute the following commands and observe how the Linux kernel and user space i
   The kernel aggressively repurposes idle memory for **Page Cache (`buff/cache`)**, caching recently accessed disk blocks in RAM.
   - When an application demands memory, the kernel evicts clean cache pages in microseconds.
   - **The metric that actually matters is `available`**, NOT `free`.
+- **The Warehouse Mental Model (Windows vs. Linux RAM)**:
+  - **Active Inventory (`used` / Windows `In Use`)**: Application heaps, stacks, and process memory. Cannot be dropped without crashing or writing to swap/pagefile.
+  - **Temporary Staging Pallets (`buff/cache` / Windows `Standby List`)**: Cached disk blocks. Discardable instantaneously ($O(1)$) with zero I/O if a process demands memory.
+  - **Empty Concrete (`free`)**: Completely unmapped physical RAM doing zero work.
+- **The Rosetta Stone: Windows vs. Linux Memory**:
+  | Concept | Windows (Task Manager / RAMMap) | Linux (`free -m` / `/proc/meminfo`) | Operational Invariant |
+  | :--- | :--- | :--- | :--- |
+  | **Process Working Set** | **In Use** (`Private Bytes`) | **`used`** (`Active(anon)`) | Real memory owned by processes. |
+  | **Read Cache** | **Standby List** | **`buff/cache`** (`Cached` + `Buffers`) | Clean disk blocks cached in RAM; evictable in microseconds. |
+  | **Dirty Cache** | **Modified List** | **`Dirty`** pages | Memory waiting for kernel flusher threads to commit to disk. |
+  | **Untouched RAM** | **Free** | **`free`** | Zero data. Linux intentionally drives this near 1-5%. |
+  | **True Usable RAM** | **Available** (`Free` + `Standby`) | **`available`** (`free` + reclaimable cache) | **The primary metric for capacity planning and alerting.** |
+  | **Disk Spillover** | **Pagefile** (`pagefile.sys`) | **Swap** (`/swapfile` or partition) | Disk spillover when process memory exceeds physical RAM. |
+
+> [!TIP]
+> **The Golden Sysadmin Rule for Memory Alerting**:
+> Never trigger alerts on `free < 10%`. A healthy Linux database server will often show less than 2% `free` because the kernel maximizes cache hits. Always alert on **`available < 10%`**.
+
 - **Verification**:
   Generate dummy disk reads and watch the cache grow in real-time:
   ```bash
