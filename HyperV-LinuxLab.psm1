@@ -16,3 +16,6 @@ foreach ($file in $publicFiles) {
 # 3. Explicitly export Public cmdlets
 $functionsToExport = $publicFiles | ForEach-Object { $_.BaseName }
 Export-ModuleMember -Function $functionsToExport
+
+# 4. Auto-sync agent skill silently if agent directories exist
+Install-LabAgentSkill -ErrorAction SilentlyContinue

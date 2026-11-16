@@ -58,7 +58,8 @@
         'Stop-Lab',
         'Stop-LabVM',
         'Test-LabCluster',
-        'Test-LabPrerequisites'
+        'Test-LabPrerequisites',
+        'Install-LabAgentSkill'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards
