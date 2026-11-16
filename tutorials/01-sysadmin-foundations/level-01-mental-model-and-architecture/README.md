@@ -258,6 +258,79 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
 
 ---
 
+## 7. The End-to-End Execution Path: What Happens When You Type a Command?
+
+When you connect via SSH, type `cat /proc/uptime` and press `[Enter]`, Linux is not performing a single monolithic action. A chain of decoupled components collaborates to execute your intent:
+
+```
+[Windows Terminal Client]
+       │ (Keystrokes transmitted over encrypted TCP port 22)
+       ▼
+[Hyper-V Virtual Switch]
+       │
+       ▼
+[sshd daemon (PID 840)] ─── allocates ───► [Pseudo-Terminal: /dev/pts/0]
+                                                         │
+                                                         ▼
+                                                [Bash Shell (PID 1052)]
+                                                         │ (fork + execve)
+                                                         ▼
+                                                [/usr/bin/cat (PID 2104)]
+                                                         │ (read syscall)
+                                                         ▼
+                                                [Linux Kernel (Ring 0)]
+```
+
+### The 4 Actors in Every Remote CLI Session
+
+1. **The Terminal Emulator (Client Side)**:
+   Windows Terminal or PowerShell is just a graphical window that captures keystrokes and draws colored character glyphs (pixels) on your screen. It knows *nothing* about Linux, filesystems, or shell syntax.
+2. **The Secure Transport (`sshd`)**:
+   The OpenSSH server daemon listens on port 22. It authenticates your public key, allocates a **Pseudo-Terminal** (`/dev/pts/0`), and acts as a bidirectional encrypted pipe between your Windows terminal and the Linux shell.
+3. **The Shell (`bash`)**:
+   Bash is simply a user-space C program running an infinite loop (**REPL**: Read-Eval-Print Loop):
+   ```c
+   while (1) {
+       display_prompt();
+       char *line = read_line_from_pts();
+       execute_command(line);
+   }
+   ```
+4. **The Kernel (`vmlinuz`)**:
+   The single Ring 0 supervisor that manages CPU scheduling, hardware, memory page tables, and file descriptors.
+
+---
+
+### The 6-Step Command Lifecycle (What Happens When You Hit `[Enter]`)
+
+When you type `cat /proc/uptime > output.txt` and press `[Enter]`, Bash executes a deterministic pipeline:
+
+```
+1. TOKENIZE   ──► Splits line by whitespace into words: ["cat", "/proc/uptime", ">", "output.txt"]
+2. EXPAND     ──► Evaluates variables ($VAR), wildcards (*), tildes (~), history (!N)
+3. IDENTIFY   ──► Resolves command type: Alias? Builtin? Function? Binary on disk?
+4. REDIRECT   ──► Sets up File Descriptors (opens output.txt on FD 1 / stdout via dup2)
+5. FORK/EXEC  ──► fork() clones process; execve() replaces child memory with /usr/bin/cat
+6. WAIT/REAP  ──► Bash sleeps (waitpid()); child runs; Bash wakes up, captures exit code ($?)
+```
+
+#### The Critical Distinction: Builtins vs. Disk Binaries
+Not all commands are files on disk!
+- **Disk Binaries (`cat`, `ls`, `grep`, `systemctl`)**:
+  Compiled ELF executable files stored in `$PATH` (e.g. `/usr/bin/cat`). Bash MUST spawn a new child process via `fork()` + `execve()` to run them.
+- **Shell Builtins (`cd`, `export`, `source`, `alias`, `exit`)**:
+  Internal C functions compiled *directly into the `bash` executable itself*.
+  - **Why `cd` CANNOT be an external binary**: If `/usr/bin/cd` existed as an external binary, Bash would `fork()` a child process. The child would change its own working directory and exit. The parent shell's directory would remain unchanged! Therefore, `cd` MUST run directly inside the parent shell's own process memory.
+
+```bash
+# Test how Linux resolves any command:
+type cd      # cd is a shell builtin
+type cat     # cat is /usr/bin/cat
+type ll      # ll is an alias
+```
+
+---
+
 ## Part A: Guided Architectural Drill (Action & Reaction)
 
 Execute the following commands and observe how the Linux kernel and user space interact.
