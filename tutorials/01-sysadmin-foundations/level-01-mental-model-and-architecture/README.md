@@ -339,7 +339,11 @@ Execute the following commands and observe how the Linux kernel and user space i
   env | grep LAB_NODE || echo "Variable successfully unset"
   ```
 - **System Reaction**:
-  The Linux kernel duplicates the parent's environment pointer during `fork(2)`. When `unset` is called, the shell removes the key from its internal dictionary.
+  Both variables live in process memory, but in different structures:
+  - **Local Shell Variables (`VAR="val"`)**: Stored in Bash's internal private symbol dictionary. Never passed across process boundaries.
+  - **Exported Environment Variables (`export VAR="val"`)**: Added to the process's standard POSIX environment vector (`char **environ`), located at the top of the process memory stack.
+  - **Process Execution Boundary**: When Bash spawns a child command, it calls `fork(2)` followed by `execve(2)`. The kernel passes `environ` (`envp`) into the new process's memory space, completely dropping Bash's internal private dictionary.
+  - **One-Way Isolation Rule**: Inheritance is strictly top-down. A child process *cannot* modify or export variables into its parent process's environment.
 - **Verification**:
   ```bash
   printenv LAB_NODE
