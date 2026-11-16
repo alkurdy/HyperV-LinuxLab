@@ -371,8 +371,13 @@ Execute the following commands and observe how the Linux kernel and user space i
   └──────────────────────────────────────────────┘
   Low Memory (0x000000000000)
   ```
-  - **The Stack**: Managed directly by CPU hardware (`RSP` register). Allocation takes 1 CPU cycle. Variables are strictly scoped to their function and evaporate the moment the function returns.
-  - **The Heap**: Managed by OS allocators (`glibc`). Flexible in size, lives until explicitly freed. Bash stores its internal variable dictionary here.
+  - **The Stack**: Managed directly by CPU hardware via the **`RSP`** (**R**egister **S**tack **P**ointer) CPU register. Allocation takes 1 CPU cycle (`sub rsp, 32`). Short-term execution scratchpad: variables are strictly scoped to their function and evaporate the moment the function returns.
+  - **The Heap**: Managed by OS allocators (`glibc`). Flexible in size, lives until explicitly freed. Long-term state: stores data whose size is dynamic or whose lifespan outlasts the function that allocated it. Bash stores its internal variable dictionary here.
+  - **The Multi-Process Virtual Memory Sandbox**:
+    - Every running process gets its *own* private copy of this `0x0` to `0x7FFF...` address map.
+    - Process A (`bash`) and Process B (`nginx`) can both have data at virtual address `0x7ffe0000`.
+    - The CPU's hardware **MMU (Memory Management Unit)** uses per-process **Page Tables** (loaded into CPU register `CR3` on context switch) to map identical virtual addresses to completely separate physical DRAM chips.
+    - If Process A attempts to read Process B's physical memory, the hardware MMU triggers a Page Fault and the kernel terminates Process A with `SIGSEGV` (Segmentation Fault).
   - **The Bridge**: When `export` is executed, Bash takes the variable from its internal Heap dictionary and places a pointer into `environ` at the top of the Stack. When `execve(2)` spawns a child, the kernel copies `environ` to the child's new stack, leaving the parent's Heap untouched.
 - **Verification**:
   ```bash
