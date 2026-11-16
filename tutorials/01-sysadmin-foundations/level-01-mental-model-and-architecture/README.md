@@ -378,6 +378,10 @@ Execute the following commands and observe how the Linux kernel and user space i
     - Process A (`bash`) and Process B (`nginx`) can both have data at virtual address `0x7ffe0000`.
     - The CPU's hardware **MMU (Memory Management Unit)** uses per-process **Page Tables** (loaded into CPU register `CR3` on context switch) to map identical virtual addresses to completely separate physical DRAM chips.
     - If Process A attempts to read Process B's physical memory, the hardware MMU triggers a Page Fault and the kernel terminates Process A with `SIGSEGV` (Segmentation Fault).
+  - **The Mental Model: The Clerk's Desk (Stack) vs. The Filing Cabinet (Heap)**:
+    - **The Desk (Stack)**: Fast, tiny, arm's reach. Holds sticky notes, current tool, and tracking index cards ("Customer file is in Drawer 42"). Swept clean the instant the current call ends.
+    - **The Filing Cabinet (Heap)**: Massive, slower, back room. Holds the actual 500-page customer file. Survives across many calls.
+    - **Neither runs code!** CPU instructions live in the **Text Segment** (`.text`, read-only). The Stack only holds execution tracking and tiny 8-byte pointer cards; the Heap holds the actual payload.
   - **The Bridge**: When `export` is executed, Bash takes the variable from its internal Heap dictionary and places a pointer into `environ` at the top of the Stack. When `execve(2)` spawns a child, the kernel copies `environ` to the child's new stack, leaving the parent's Heap untouched.
   - **Memory Reclamation Lifecycle (How Cleanup Works)**:
     - **Stack Cleanup (Instant & Zero-Overhead)**: Managed entirely by pointer math in CPU `RSP`. When a function returns, the CPU increments `RSP` back up in 1 clock cycle (`add rsp, N` / `ret`). The memory is *not* wiped with zeroes; the CPU simply moves the boundary pointer above it, and subsequent function calls overwrite the dead memory.
