@@ -382,7 +382,15 @@ Execute the following commands and observe how the Linux kernel and user space i
     - **The Desk (Stack)**: Fast, tiny, arm's reach. Holds sticky notes, current tool, and tracking index cards ("Customer file is in Drawer 42"). Swept clean the instant the current call ends.
     - **The Filing Cabinet (Heap)**: Massive, slower, back room. Holds the actual 500-page customer file. Survives across many calls.
     - **Neither runs code!** CPU instructions live in the **Text Segment** (`.text`, read-only). The Stack only holds execution tracking and tiny 8-byte pointer cards; the Heap holds the actual payload.
-  - **The Bridge**: When `export` is executed, Bash takes the variable from its internal Heap dictionary and places a pointer into `environ` at the top of the Stack. When `execve(2)` spawns a child, the kernel copies `environ` to the child's new stack, leaving the parent's Heap untouched.
+  - **The Bridge: What `export` Actually Does**:
+    - **Step 1 (Without `export`)**: `VAR="val"` stores `"val"` in Bash's private Heap hash table with `flags = 0`. It is completely invisible outside this single Bash process.
+    - **Step 2 (With `export`)**: `export VAR` flips the internal bit (`flags |= VAR_EXPORTED`) and writes a pointer into the POSIX **`char **environ`** vector (`["VAR=val", "USER=labadmin", ..., NULL]`).
+    - **Step 3 (The `fork()` + `execve()` Boundary)**:
+      1. Bash calls `fork()` (clones process).
+      2. Child calls `execve(binary, argv, envp)`.
+      3. The Linux kernel **destroys** the child's inherited address space (old Heap, old symbol tables, unexported variables are erased).
+      4. The kernel creates a fresh address space, maps the new binary into `.text`, builds a brand new Stack, and copies **only the `envp` (`environ`) array** directly to the top of the child's new Stack.
+      5. The child's C runtime (`crt0`) reads `envp` and initializes its own environment. Unexported variables never cross this bridge.
   - **Memory Reclamation Lifecycle (How Cleanup Works)**:
     - **Stack Cleanup (Instant & Zero-Overhead)**: Managed entirely by pointer math in CPU `RSP`. When a function returns, the CPU increments `RSP` back up in 1 clock cycle (`add rsp, N` / `ret`). The memory is *not* wiped with zeroes; the CPU simply moves the boundary pointer above it, and subsequent function calls overwrite the dead memory.
     - **Heap Cleanup (Manual or GC)**:
