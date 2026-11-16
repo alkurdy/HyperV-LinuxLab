@@ -344,6 +344,36 @@ Execute the following commands and observe how the Linux kernel and user space i
   - **Exported Environment Variables (`export VAR="val"`)**: Added to the process's standard POSIX environment vector (`char **environ`), located at the top of the process memory stack.
   - **Process Execution Boundary**: When Bash spawns a child command, it calls `fork(2)` followed by `execve(2)`. The kernel passes `environ` (`envp`) into the new process's memory space, completely dropping Bash's internal private dictionary.
   - **One-Way Isolation Rule**: Inheritance is strictly top-down. A child process *cannot* modify or export variables into its parent process's environment.
+- **Process Memory Architecture (Stack vs. Heap)**:
+  Every Linux process runs inside an isolated 64-bit Virtual Address Space:
+  ```
+  High Memory (0x7FFFFFFFFFFF)
+  ┌──────────────────────────────────────────────┐
+  │ Kernel Mapping (Ring 0 - Protected)          │
+  ├──────────────────────────────────────────────┤
+  │ argc, argv, **environ (POSIX env table)      │  <-- Top of User Stack
+  ├──────────────────────────────────────────────┤
+  │ STACK (grows DOWN ↓ towards heap)            │  <-- Fast, automatic, CPU RSP register
+  │   - Function call frames & return addresses  │      Fixed limit (~8 MB, ulimit -s)
+  │   - Local primitive variables & pointers     │      Dies when function returns
+  ├──────────────────────────────────────────────┤
+  │                      ↓↓↓                     │
+  │                 (Unmapped Gap)               │
+  │                      ↑↑↑                     │
+  ├──────────────────────────────────────────────┤
+  │ HEAP (grows UP ↑ towards stack)              │  <-- Dynamic allocation (malloc / new)
+  │   - Bash internal variable hash table        │      Syscalls: brk() / sbrk() / mmap()
+  │   - Long-lived buffers, objects, data        │      Manual lifetime (or memory leak)
+  ├──────────────────────────────────────────────┤
+  │ BSS / Data Segments (Global variables)       │
+  ├──────────────────────────────────────────────┤
+  │ Text Segment (Compiled binary machine code)  │  <-- Read-only, executable
+  └──────────────────────────────────────────────┘
+  Low Memory (0x000000000000)
+  ```
+  - **The Stack**: Managed directly by CPU hardware (`RSP` register). Allocation takes 1 CPU cycle. Variables are strictly scoped to their function and evaporate the moment the function returns.
+  - **The Heap**: Managed by OS allocators (`glibc`). Flexible in size, lives until explicitly freed. Bash stores its internal variable dictionary here.
+  - **The Bridge**: When `export` is executed, Bash takes the variable from its internal Heap dictionary and places a pointer into `environ` at the top of the Stack. When `execve(2)` spawns a child, the kernel copies `environ` to the child's new stack, leaving the parent's Heap untouched.
 - **Verification**:
   ```bash
   printenv LAB_NODE
