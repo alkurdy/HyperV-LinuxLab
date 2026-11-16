@@ -296,8 +296,17 @@ When you connect via SSH, type `cat /proc/uptime` and press `[Enter]`, Linux is 
        execute_command(line);
    }
    ```
+   - **Yes, Bash is a living process throughout your entire SSH connection!**
+   - Each time you open a new SSH terminal, `sshd` spawns a brand new, independent `bash` process.
+   - When you disconnect, the kernel sends a `SIGHUP` (Hangup Signal) to that `bash` process, terminating it.
+   - You can inspect your own active shell PID anytime with `echo $$`.
 4. **The Kernel (`vmlinuz`)**:
    The single Ring 0 supervisor that manages CPU scheduling, hardware, memory page tables, and file descriptors.
+
+### History in 60 Seconds: Before Bash & Linux
+- **1970s (The Teletype / TTY)**: Before video screens, terminals were mechanical paper typewriters wired to computers (hence the name **TTY**). The original Unix shell was Ken Thompson's `sh` (1971), followed by Stephen Bourne's `sh` (1977).
+- **1989 (Bash Created)**: Brian Fox authored **Bash** (**B**ourne **A**gain **SH**ell) for the GNU Project to provide a free, open-source upgrade to the Bourne shell.
+- **1991 (Linux Born)**: Linus Torvalds released the Linux kernel. The very first two user programs Linus ported to run on his new kernel were **GCC (the compiler)** and **Bash**. Linux *never existed* without a shell—from day one, it was designed to boot straight into Bash.
 
 ---
 
