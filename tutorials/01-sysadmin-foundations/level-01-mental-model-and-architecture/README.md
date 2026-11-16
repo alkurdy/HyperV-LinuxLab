@@ -379,6 +379,12 @@ Execute the following commands and observe how the Linux kernel and user space i
     - The CPU's hardware **MMU (Memory Management Unit)** uses per-process **Page Tables** (loaded into CPU register `CR3` on context switch) to map identical virtual addresses to completely separate physical DRAM chips.
     - If Process A attempts to read Process B's physical memory, the hardware MMU triggers a Page Fault and the kernel terminates Process A with `SIGSEGV` (Segmentation Fault).
   - **The Bridge**: When `export` is executed, Bash takes the variable from its internal Heap dictionary and places a pointer into `environ` at the top of the Stack. When `execve(2)` spawns a child, the kernel copies `environ` to the child's new stack, leaving the parent's Heap untouched.
+  - **Memory Reclamation Lifecycle (How Cleanup Works)**:
+    - **Stack Cleanup (Instant & Zero-Overhead)**: Managed entirely by pointer math in CPU `RSP`. When a function returns, the CPU increments `RSP` back up in 1 clock cycle (`add rsp, N` / `ret`). The memory is *not* wiped with zeroes; the CPU simply moves the boundary pointer above it, and subsequent function calls overwrite the dead memory.
+    - **Heap Cleanup (Manual or GC)**:
+      - *Manual (C/C++)*: `free()` returns memory chunks to the application allocator's free-list bins (`ptmalloc`). The allocator typically retains these physical pages to service future `malloc()` calls without making expensive kernel syscalls. Only large contiguous top-of-heap releases trigger `brk()` or `madvise(MADV_DONTNEED)` syscalls to hand physical pages back to the Linux kernel.
+      - *Garbage Collected (Go, Java, Python)*: Background GC threads periodically mark live reachable objects from root pointers (Stack & Globals) and sweep or compact dead heap memory, trading CPU cycles to prevent leaks.
+    - **The Nuclear Cleanup Rule (Process Termination)**: When a process exits or receives `SIGKILL` (`kill -9`), the Linux kernel destroys the process's entire `mm_struct`, tears down its Page Tables in the MMU, and unconditionally returns **all** physical pages (Stack, Heap, and BSS) to the OS free pool. No memory leak survives process termination.
 - **Verification**:
   ```bash
   printenv LAB_NODE
