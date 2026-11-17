@@ -751,7 +751,119 @@ Sysadmins need global aliases (`ll`, `ports`) and history timestamps (`HISTTIMEF
 
 ---
 
-## The Scripting Toolkit: The 5 Primitives of Linux Automation
+## The Everyday Sysadmin Toolbox: The 4 Tool Archetypes & When to Use Each
+
+In Windows, GUI tools like Event Viewer, Services MMC, and Task Manager combine viewing, filtering, and management into big monolithic windows.
+In Linux, the UNIX philosophy reigns: **Small, specialized tools that do exactly one thing, connected by pipes (`|`).**
+
+Before writing scripts, you must build intuitive muscle memory for the **4 core tool archetypes**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        THE 4 TOOL ARCHETYPES                           │
+├─────────────────┬─────────────────┬──────────────────┬─────────────────┤
+│ 1. VIEWERS      │ 2. FINDERS      │ 3. SLICERS       │ 4. MONITORS     │
+├─────────────────┼─────────────────┼──────────────────┼─────────────────┤
+│ cat (dump all)  │ grep (in-file)  │ cut (delimited)  │ top (CPU/RAM)   │
+│ head (top N)    │ find (on-disk)  │ awk (whitespace) │ ss (sockets)    │
+│ tail (bottom N) │ which (binary)  │ sort (order)     │ df -h (disks)   │
+│ less (pager)    │ type (identity) │ wc -l (count)    │ du -sh (dirs)   │
+└─────────────────┴─────────────────┴──────────────────┴─────────────────┘
+```
+
+---
+
+### Archetype 1: The Viewers (Inspecting Data Safely)
+
+- **`cat` ("Concatenate / Dump")**:
+  - *When to use*: Inspecting tiny files (< 30 lines) or feeding files into pipes (`cat /proc/uptime`).
+  - *When NEVER to use*: Large files (e.g., `/var/log/syslog`). It dumps 100,000 lines onto your screen, blowing away your terminal scrollback!
+- **`head` & `tail` ("Inspect the Boundaries")**:
+  - `head -n 5 /etc/passwd`: Shows the first 5 lines.
+  - `tail -n 5 /var/log/dpkg.log`: Shows the last 5 lines.
+  - `tail -f /var/log/syslog`: **The Live EKG Monitor**. Keeps the file open and prints new log lines in real-time as background daemons write them. Press `Ctrl + C` to stop.
+- **`less` ("The Interactive Book Reader")**:
+  - *When to use*: Any file longer than one terminal screen.
+  - Opens in full-screen pager without dumping text into terminal history:
+    - `Space` or `Page Down`: Scroll down.
+    - `b` or `Page Up`: Scroll up.
+    - `/error` + `[Enter]`: Search forward for "error" (`n` for next match).
+    - `q`: Quit cleanly.
+
+---
+
+### Archetype 2: The Finders (Inside Files vs. On Disk)
+
+- **`grep` (Search INSIDE files)**:
+  Searches file streams for regex patterns:
+  ```bash
+  # Find all users with /bin/bash shell:
+  grep "bash" /etc/passwd
+
+  # Inverted search (find lines that do NOT match):
+  grep -v "nologin" /etc/passwd
+
+  # Case-insensitive search:
+  grep -i "error" /var/log/syslog
+  ```
+- **`find` (Search the FILESYSTEM)**:
+  Crawls directory trees on disk by filename, size, or modification date:
+  ```bash
+  # Find all log files under /var/log:
+  find /var/log -name "*.log"
+
+  # Find files larger than 10MB:
+  find /var -size +10M
+  ```
+- **`which` & `type` (Find EXECUTABLES)**:
+  - `which nginx`: Shows the absolute disk path of a command (`/usr/sbin/nginx`).
+  - `type cd`: Explains whether a command is a binary on disk, an alias, or a shell builtin.
+
+---
+
+### Archetype 3: The Slicers & Counters (Transforming Plaintext)
+
+- **`cut` (Split Delimited Strings)**:
+  Best for files with consistent delimiters (like colons `:` or commas `,`):
+  ```bash
+  # /etc/passwd format is username:password:UID:GID:...
+  # Extract only usernames (Field 1, delimiter ':'):
+  cut -d: -f1 /etc/passwd
+  ```
+- **`awk` (Extract Table Columns)**:
+  Best for whitespace-aligned tables (like `df -h` or `free -m`):
+  ```bash
+  # Extract filesystem name (col 1) and use percentage (col 5):
+  df -h | awk '{print $1, $5}'
+  ```
+- **`sort` & `uniq` (Deduplication & Frequency)**:
+  ```bash
+  # List all login shells in /etc/passwd, sorted and deduplicated with counts:
+  cut -d: -f7 /etc/passwd | sort | uniq -c
+  ```
+- **`wc` (Word & Line Counter)**:
+  ```bash
+  # Count total users configured on the system:
+  wc -l /etc/passwd
+  ```
+
+---
+
+### The LEGO Philosophy: Snapping Tools Together
+
+In Linux, you rarely run these tools in isolation. You snap them together with pipes (`|`):
+
+```bash
+# Question: How many human users have bash as their login shell?
+cat /etc/passwd | grep "/bin/bash" | cut -d: -f1 | sort | wc -l
+```
+1. `cat` reads the file.
+2. `grep` filters lines ending in `/bin/bash`.
+3. `cut` extracts only the username column.
+4. `sort` sorts them alphabetically.
+5. `wc -l` counts the lines.
+
+---
 
 Before writing administrative scripts, you must master the five primitives that connect commands together:
 
