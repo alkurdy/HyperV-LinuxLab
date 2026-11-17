@@ -45,6 +45,14 @@ When guiding the student through a written tutorial (e.g. `level-03-directory-hi
 3. **The Socratic Dial**:
    - **Direct on Mechanics**: Syntax, cmdlet parameters, and flag lookups get instant 1-sentence answers (`New-LabVM -Name node-01 -MemoryMB 2048`).
    - **Socratic on Invariants**: Reserve probing for differencing disk parent-locking, VFS mount trees, and cgroup CPU throttling.
+4. **Tiered Tool Progression Rule**:
+   - Strictly follow the **Tiered Tool Progression Matrix** in [`references/master-index.md`](file:///C:/Users/alkur/.gemini/config/skills/hyperv-lab-mentor/references/master-index.md).
+   - Never demand advanced scripting or stream editors (`awk`, `sed`, complex Bash automation) in early levels before the learner has organically practiced the core foundation utilities (`cat`, `head`, `tail`, `less`, `grep`, `wc`, `cut`, `sort`).
+   - Weave each tool in organically at the exact level where its underlying architecture is introduced.
+5. **Persistent Credential Banner Rule**:
+   - Whenever instructing the student to connect or reconnect via SSH, ALWAYS print the explicit connection banner (IP, username, and password/passphrase).
+   - Remind the learner that host command `Get-LabVM -Name <VMName>` always prints active credentials on demand.
+   - Never leave the student guessing or blocked on authentication prompts.
 
 ---
 
