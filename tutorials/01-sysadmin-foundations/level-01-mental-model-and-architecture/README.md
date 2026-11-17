@@ -279,6 +279,33 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
      - *The Passphrase*: Encrypts the private key file on disk using **AES-256-CBC** and key derivation (**bcrypt**). When OpenSSH prompts `Enter passphrase for key...`, it decrypts the key strictly in volatile RAM to sign the authentication challenge. The private key on disk remains encrypted ciphertext.
    - **Layer 3: Linux OS Account Password (e.g. `Green-Rabbit-95`)**: The password of the `labadmin` user account inside the Linux VM. Used for **`sudo` privilege escalation** to root and emergency Hyper-V console logins.
 
+   #### How "Passwordless" Access Works: Wire Encryption vs. Authentication
+   A common misconception is that your SSH key encrypts the connection. It does not! SSH splits the session into two completely distinct cryptographic phases:
+
+   ```
+   PHASE 1: WIRE ENCRYPTION (Ephemeral Diffie-Hellman / ECDH)
+   Client <══════════════════════════════════════════════════════> Server
+   - Negotiate temporary symmetric session key (ChaCha20 / AES-GCM).
+   - Server presents Host Key to prove its identity (known_hosts).
+   - RESULT: A secure, encrypted pipe is established. (User key NOT used yet!)
+
+   PHASE 2: USER AUTHENTICATION ("Passwordless" Challenge-Response)
+   Client                                                          Server
+     │                                                               │
+     │ ── 1. "I want to log in as labadmin using public key X" ───►  │
+     │                                                               │ (Checks ~/.ssh/authorized_keys)
+     │ ◄── 2. "Prove it. Sign this random challenge: 9f4a8b..." ──── │
+     │                                                               │
+     │ (Client signs challenge in RAM using private key id_ed25519)  │
+     │                                                               │
+     │ ── 3. "Here is the digital signature" ──────────────────────► │
+     │                                                               │ (Verifies signature using Public Key X)
+     │ ◄── 4. "Signature matches! Access granted. Spawning bash" ─── │
+   ```
+
+   - **Why it is "Passwordless"**: Neither a password nor your private key is ever transmitted across the network.
+   - **Zero-Knowledge Proof**: The server gives you a unique, random mathematical challenge. Only someone holding the private key can generate the valid signature, but anyone holding the public key can verify that the signature is genuine. An eavesdropper recording the traffic only sees the signature of a one-time random number that will never be used again.
+
 5. **Enterprise & Cloud Key Injection (Hyper-V vs. AWS vs. Azure)**:
    A foundational rule of public-key cryptography: **Private keys are NEVER shared or copied to the cloud.** Only your *public key* is injected into the VM:
 
