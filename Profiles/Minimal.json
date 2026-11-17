@@ -6,6 +6,7 @@
     "git",
     "jq",
     "tar",
+    "acl",
     "tmux",
     "htop",
     "tree",

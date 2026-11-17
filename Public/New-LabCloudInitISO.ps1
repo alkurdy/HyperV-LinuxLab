@@ -40,7 +40,7 @@ function New-LabCloudInitISO {
         [Parameter(Mandatory = $false)]
         [string]$Profile,
 
-        [string[]]$Packages = @("curl", "git", "jq", "tar"),
+        [string[]]$Packages = @("curl", "git", "jq", "tar", "acl"),
 
         [string[]]$RunCommands = @(),
 

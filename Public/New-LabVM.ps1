@@ -57,7 +57,7 @@ function New-LabVM {
         [Parameter(Mandatory = $false)]
         [string]$Profile,
 
-        [string[]]$Packages = @("curl", "git", "jq"),
+        [string[]]$Packages = @("curl", "git", "jq", "tar", "acl"),
 
         [string[]]$RunCommands = @(),
 
