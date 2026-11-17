@@ -679,15 +679,51 @@ Execute the following commands and observe how the Linux kernel and user space i
   ```
 
 ### 5. POSIX Streams & Administrative Baseline Profile
-- **Action**: Establish an administrative baseline audit file by redirecting standard streams, and configure a global sysadmin profile:
-  ```bash
-  # Redirect hardware baseline to an audit report
-  sudo mkdir -p /var/log/sysadmin
-  sudo bash -c 'uname -r > /var/log/sysadmin/baseline.txt'
-  sudo bash -c 'free -m | grep Mem >> /var/log/sysadmin/baseline.txt'
-  sudo bash -c 'cat /proc/sys/kernel/hostname >> /var/log/sysadmin/baseline.txt'
 
-  # Configure global shell convenience profile for all admins
+#### The Problem: Why `sudo echo ... > /var/log/file` Fails (The Shell Redirection Trap)
+A universal gotcha in Linux administration:
+```bash
+sudo uname -r > /var/log/sysadmin/baseline.txt  # FAILS: Permission denied!
+```
+- **Why it fails**: Remember the 6-step command lifecycle from Section 9! Bash sets up stream redirections (`>`) **before** spawning the command. Because your interactive shell is running as unprivileged user `labadmin`, *your unprivileged shell* attempts to open `/var/log/sysadmin/baseline.txt` for writing. The kernel rejects it with `Permission denied` before `sudo` ever runs!
+- **Solution 1 (`sudo bash -c '...'`)**: Spawns a root shell so the shell setting up the redirection has root privileges:
+  ```bash
+  sudo bash -c 'uname -r > /var/log/sysadmin/baseline.txt'
+  ```
+- **Solution 2 (`sudo tee`)**: Piped standard input is read by `tee` running as root:
+  ```bash
+  echo "data" | sudo tee /var/log/sysadmin/baseline.txt
+  ```
+
+#### Step 1: Create Audit Directory & Build Baseline Report
+- **Action**: Create dedicated log directory and redirect system telemetry:
+  ```bash
+  # 1. Create directory owned by root
+  sudo mkdir -p /var/log/sysadmin
+
+  # 2. Overwrite (>) baseline file with kernel release
+  sudo bash -c 'uname -r > /var/log/sysadmin/baseline.txt'
+
+  # 3. Append (>>) memory statistics to baseline
+  sudo bash -c 'free -m | grep Mem >> /var/log/sysadmin/baseline.txt'
+
+  # 4. Append (>>) system hostname to baseline
+  sudo bash -c 'cat /proc/sys/kernel/hostname >> /var/log/sysadmin/baseline.txt'
+  ```
+- **System Reaction**:
+  - `>` opens with `O_TRUNC` (erases existing contents; starts at byte 0).
+  - `>>` opens with `O_APPEND` (preserves existing data; writes to end of file).
+- **Verification**:
+  ```bash
+  cat /var/log/sysadmin/baseline.txt
+  ```
+
+#### Step 2: Global Profile Setup via Heredoc (`<< 'EOF'`) & `sudo tee`
+Sysadmins need global aliases (`ll`, `ports`) and history timestamps (`HISTTIMEFORMAT`) across all admin sessions.
+- **Why `/etc/profile.d/`**: When any user logs in via SSH, `/etc/profile` executes and sources every `*.sh` script in `/etc/profile.d/`. This provides central management without manually editing every user's `~/.bashrc`.
+- **What is a Heredoc (`<< 'EOF'`)**: In scripts or automation, you cannot open interactive editors like `nano` or `vim`. A Heredoc feeds multi-line text directly into a command's standard input (`stdin`) until it encounters the delimiter `EOF`.
+- **Action**: Write the global profile configuration:
+  ```bash
   cat << 'EOF' | sudo tee /etc/profile.d/00-sysadmin.sh
   export HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "
   export EDITOR="nano"
@@ -695,13 +731,13 @@ Execute the following commands and observe how the Linux kernel and user space i
   alias ports='ss -tulpn'
   EOF
   ```
-- **System Reaction**:
-  The shell opens `/var/log/sysadmin/baseline.txt` on File Descriptor 1 (`stdout`), evaluates the pipeline, and writes output without spawning a terminal emulator. Placing the script in `/etc/profile.d/` causes `bash` to source it upon every interactive login session.
-- **Verification**:
+- **Verification & Activation**:
+  - Direct execution (`bash /etc/profile.d/00-sysadmin.sh`) would spawn a child process that sets aliases and exits, leaving your current shell unchanged.
+  - To load aliases into your *current active shell*, use the builtin `source` (or `.`):
   ```bash
-  cat /var/log/sysadmin/baseline.txt
   source /etc/profile.d/00-sysadmin.sh
   alias ports
+  ll /var/log/sysadmin
   ```
 
 ---
