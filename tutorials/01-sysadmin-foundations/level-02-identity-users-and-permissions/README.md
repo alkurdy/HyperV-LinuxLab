@@ -66,6 +66,38 @@ sudo usermod -a -G developers,sudo sconnor
 > [!WARNING]
 > **The `usermod -G` Group Wipeout Trap**: When using `usermod -G`, the `-a` (append) flag is **mandatory**. If you run `usermod -G developers sconnor` without `-a`, the operating system **removes the user from all other supplementary groups**, silently revoking their `sudo` and administrative memberships!
 
+### Crafting Machine-to-Machine & External Automation Accounts
+When an external system (CI/CD pipeline, Ansible runner, automated backup agent) connects to a server over SSH, it requires an identity crafted with the **Principle of Least Privilege**:
+
+```
+[External CI/CD / Ansible Server]
+               │ (SSH Key with forced restrictions)
+               ▼
+[sysadmin-node: svc-deploy] ──► Locked password (! in /etc/shadow)
+                            ──► Restricted ~/.ssh/authorized_keys (IP filter + no-pty)
+                            ──► Scoped /etc/sudoers.d/ (NOPASSWD for exact binaries only)
+```
+
+1. **Create Account with Home Directory but Locked Password**:
+   ```bash
+   sudo useradd -m -s /bin/bash -c "CI/CD Deployment Service" svc-deploy
+   sudo passwd -l svc-deploy  # Locks password field with '!' in /etc/shadow
+   ```
+2. **Harden `authorized_keys` with SSH Options**:
+   Never paste an unconstrained public key for an automation account. Prepend security restrictions to the key in `/home/svc-deploy/.ssh/authorized_keys`:
+   ```text
+   from="10.0.1.50",no-port-forwarding,no-X11-forwarding,no-pty,command="/usr/local/bin/deploy.sh" ssh-ed25519 AAAAC3... ci-bot@github
+   ```
+   - `from="10.0.1.50"`: Key is valid **only** when connecting from that specific trusted runner IP.
+   - `no-pty`: Prevents allocating an interactive terminal.
+   - `command="..."`: **Forced Command**. No matter what command the external runner requests, it can only execute this single pre-approved script!
+3. **Scoped Sudo Delegation (No Blind Root)**:
+   A machine cannot type a sudo password, but giving it `ALL=(ALL) NOPASSWD: ALL` means a compromised CI/CD server gives attackers complete root on your fleet. Restrict sudo to the exact binary paths:
+   ```text
+   # /etc/sudoers.d/svc-deploy
+   svc-deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart app, /usr/bin/rsync
+   ```
+
 ### Inspecting Identity & Switching Contexts
 ```bash
 # Query current user's UID, primary GID, and supplementary groups
