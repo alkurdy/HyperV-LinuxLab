@@ -279,6 +279,63 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
      - *The Passphrase*: Encrypts the private key file on disk using **AES-256-CBC** and key derivation (**bcrypt**). When OpenSSH prompts `Enter passphrase for key...`, it decrypts the key strictly in volatile RAM to sign the authentication challenge. The private key on disk remains encrypted ciphertext.
    - **Layer 3: Linux OS Account Password (e.g. `Green-Rabbit-95`)**: The password of the `labadmin` user account inside the Linux VM. Used for **`sudo` privilege escalation** to root and emergency Hyper-V console logins.
 
+5. **Enterprise & Cloud Key Injection (Hyper-V vs. AWS vs. Azure)**:
+   A foundational rule of public-key cryptography: **Private keys are NEVER shared or copied to the cloud.** Only your *public key* is injected into the VM:
+
+   ```
+   LOCAL HYPER-V LAB (NoCloud ISO)
+   Host PowerShell reads ~/.ssh/*.pub ──► bakes into cidata.iso ──► Cloud-Init mounts ISO on boot ──► writes ~/.ssh/authorized_keys
+
+   AWS EC2 (Instance Metadata Service / IMDS)
+   User registers Public Key in AWS ──► VM boots ──► Cloud-Init curls http://169.254.169.254/latest/meta-data/ ──► writes ~/.ssh/authorized_keys
+
+   AZURE VMS (Azure IMDS / ARM)
+   Portal passes Public Key via ARM ──► VM boots ──► Cloud-Init queries Azure Fabric / IMDS ──► writes ~/.ssh/authorized_keys
+   ```
+
+   - **How `HyperV-LinuxLab` Does It**:
+     1. `New-LabVM` runs `New-LabCloudInitISO.ps1` on your Windows workstation.
+     2. It discovers all `.pub` files in `C:\Users\<user>\.ssh\`.
+     3. It bakes them into a temporary `cidata.iso` image formatted with the **NoCloud** datasource schema.
+     4. Hyper-V attaches the ISO as a virtual DVD drive.
+     5. Canonical Ubuntu boots, `cloud-init.service` reads the virtual DVD, creates `labadmin`, writes the public keys into `/home/labadmin/.ssh/authorized_keys`, and enforces strict permissions (`chmod 700 ~/.ssh`, `chmod 600 authorized_keys`).
+   - **How AWS EC2 Does It**:
+     1. AWS never sees or touches your private key. You upload your public key (or AWS generates a key pair and gives you the private `.pem` to download once).
+     2. AWS attaches the public key metadata to the EC2 instance profile.
+     3. When Ubuntu boots inside EC2, Cloud-Init detects the AWS hypervisor and queries the link-local **Instance Metadata Service (IMDS)** at `http://169.254.169.254/latest/meta-data/public-keys/0/openssh-key`.
+     4. Cloud-Init downloads the public key over the internal virtual NIC and injects it into `/home/ubuntu/.ssh/authorized_keys`.
+   - **How Azure Does It**:
+     1. Azure Resource Manager (ARM) injects public keys via the Azure Instance Metadata Service (`http://169.254.169.254/metadata/instance`) or via provisioned configuration files.
+
+6. **Enterprise Remote Access: How Users Connect From Home or Corporate Networks**:
+   In enterprise infrastructure, production servers rarely sit on open public IP addresses. Organizations use three primary network patterns to connect:
+
+   ```
+   Pattern 1: Direct Public IP + Firewall (Home Labs & Dev)
+   [Home Laptop] ───────── Public Internet (TCP Port 22) ─────────► [Cloud VM (Public IP)]
+                                (Restricted by Security Group to your IP)
+
+   Pattern 2: Bastion Host / Jump Box (Traditional Enterprise)
+   [Home / Office] ──► VPN ──► [Hardened Bastion (DMZ)] ──► Private Subnet (10.0.1.x) ──► [Internal Linux VM]
+                                 (SSH Agent Forwarding)
+
+   Pattern 3: Zero-Trust & Identity-Aware Proxies (Modern Cloud / SRE Standard)
+   [Workstation] ──► [Cloud Control Plane (IAM + MFA)] ◄── Outbound HTTPS Tunnel ──► [SSM/Tailscale Agent on VM]
+                     (NO OPEN INBOUND PORTS! NO PUBLIC IPS!)
+   ```
+
+   - **Pattern 1: Direct Network Security Group (NSG / SG)**:
+     The VM has a public IP, but an AWS Security Group or Azure NSG firewall rule restricts port 22 strictly to your home WAN IP (`x.x.x.x/32`). Cheap and simple for labs, but unsuitable for enterprise compliance.
+   - **Pattern 2: Bastion Host (Jump Box)**:
+     All database and application servers sit in private subnets with RFC1918 IPs (`10.x.x.x`) and **zero public internet access**. A single heavily monitored Linux VM (the Bastion) sits in a public DMZ. Users connect through a corporate VPN, SSH to the Bastion, and "jump" to the internal servers using SSH Agent Forwarding (`ssh -A`).
+   - **Pattern 3: Zero-Trust Identity Proxies (AWS SSM & Azure Bastion & Tailscale)**:
+     The modern cloud standard. **Port 22 is completely closed and VMs have no public IPs.**
+     - **AWS Systems Manager (SSM) Session Manager**: A lightweight agent inside the VM initiates an *outbound HTTPS connection* (TCP 443) to AWS APIs. Engineers authenticate with corporate Single Sign-On (SSO) + MFA and run:
+       ```bash
+       aws ssm start-session --target i-0123456789abcdef0
+       ```
+     - **Tailscale / WireGuard**: A peer-to-peer encrypted mesh network. Each node runs a WireGuard daemon and receives a private `100.x.y.z` overlay IP. Engineers SSH seamlessly from home or coffee shops over end-to-end encrypted tunnels authenticated by their identity provider (Google Workspace, Okta, Microsoft Entra ID).
+
 ---
 
 ## 7. The End-to-End Execution Path: What Happens When You Type a Command?
