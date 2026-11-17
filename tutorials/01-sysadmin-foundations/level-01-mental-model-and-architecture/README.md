@@ -429,6 +429,27 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
    5. **The Chain of Trust Verification**: The client traces signatures upward:
       `Leaf Cert ──► signed by Intermediate CA ──► signed by Root CA in Trust Store`. If any link in the chain is broken, missing, or expired, the OS rejects the connection with a Certificate Error.
 
+   #### Confidentiality vs. Identity: The Armored Truck vs. The ID Badge
+   A critical mental distinction for systems engineers:
+   - **Confidentiality (Securing the Traffic)**: Making sure an eavesdropper on the network cannot read your commands or passwords. **This is handled automatically by Diffie-Hellman session encryption**, regardless of whether you use passwords, raw keys, or certificates.
+   - **Identity & Authorization (What the Key/Certificate is For)**: Answering the server's question: *"Who is at the keyboard, and are they authorized to enter?"*
+
+   #### Why Plain SSH Keys Fail in Enterprise & Why SSH Certificates Exist
+   With raw SSH keys (`authorized_keys`):
+   - **No Expiration Date**: A raw SSH key generated in 2020 never expires. If an engineer leaves the company or a service account key leaks on GitHub, it remains valid forever until someone manually deletes it.
+   - **The 10,000 Server Sync Nightmare**: To revoke access for one departed engineer or leaked service account, you must connect to all 10,000 servers and scrub their `authorized_keys` file. If one server is offline or missed, the attacker retains root access indefinitely.
+
+   **What an SSH Certificate Solves**:
+   An SSH Certificate is **an ephemeral cryptographic ID badge with embedded policy**:
+   1. **Burned-In Expiration (TTL)**: The certificate explicitly states: `Valid from 09:00 AM to 05:00 PM today`. At 5:01 PM, the certificate mathematically self-destructs. No key revocation list or manual scrubbing required!
+   2. **Identity & Principal Restrictions**: The certificate declares: `Principals: deploy-bot, app-runner`. The holder can ONLY log in as those specific system accounts, never as `root`.
+   3. **Stateless Servers (Zero `authorized_keys` Files)**:
+      Servers no longer store individual user keys. The server configuration (`/etc/ssh/sshd_config`) contains one single directive:
+      ```
+      TrustedUserCAKeys /etc/ssh/ca.pub
+      ```
+      When an engineer or automated CI/CD pipeline connects, they present an ephemeral certificate signed by the company's central Certificate Authority (e.g., HashiCorp Vault, Teleport, or Smallstep). The server checks the CA signature, checks the expiration timestamp, checks the allowed username, and grants access.
+
 ---
 
 ## 9. The End-to-End Execution Path: What Happens When You Type a Command?
