@@ -751,6 +751,67 @@ Sysadmins need global aliases (`ll`, `ports`) and history timestamps (`HISTTIMEF
 
 ---
 
+## The Scripting Toolkit: The 5 Primitives of Linux Automation
+
+Before writing administrative scripts, you must master the five primitives that connect commands together:
+
+### 1. The Shebang (`#!/bin/bash`)
+In Windows, file extensions (`.exe`, `.ps1`, `.bat`) determine how a file runs.
+In Linux, **file extensions are purely cosmetic**. A file named `script.txt` can execute just as easily as `script.sh`.
+- The first two bytes of an executable script must be **`#!`** (hex `0x23 0x21`, called the **Shebang**).
+- When the Linux kernel executes `execve("script.sh")`, it reads those two bytes, extracts the interpreter path following them (`/bin/bash`), and automatically invokes:
+  `/bin/bash script.sh`.
+- **Rule**: Every bash script must begin with line 1:
+  ```bash
+  #!/bin/bash
+  ```
+
+### 2. Command Substitution (`$(...)`)
+How do you capture the output of a command into a variable inside a script?
+Use `$()` (command substitution):
+```bash
+# Capture command outputs into variables:
+CURRENT_HOST=$(hostname)
+KERNEL_REV=$(uname -r)
+```
+The shell spawns a subshell, executes the command inside `$()`, captures its standard output stream, and assigns the string to the variable.
+
+### 3. Field & Token Extraction (`cut` vs. `awk`)
+Linux system files and commands output tabular or delimited plaintext. Two core tools extract specific columns:
+- **`cut` (Delimited fields)**:
+  Extracts fields separated by a single delimiter:
+  ```bash
+  # /proc/uptime outputs: "12345.67 45678.90" (uptime idle_time)
+  # Extract first field separated by space:
+  UPTIME=$(cat /proc/uptime | cut -d' ' -f1)
+  ```
+- **`awk` (Whitespace-separated columns)**:
+  Extracts specific columns regardless of varying spaces:
+  ```bash
+  # free -m outputs:
+  #               total        used        free      shared  buff/cache   available
+  # Mem:           1975         380        1150           2         444        1442
+  # Column 7 is 'available':
+  AVAIL_MEM=$(free -m | grep Mem | awk '{print $7}')
+  ```
+
+### 4. File Execution Permissions (`chmod +x`)
+By default, newly created text files in Linux have read and write permissions, but **zero execution permissions** (`-rw-r--r--`).
+If you try to run `./script.sh`, the kernel returns `Permission denied`.
+To permit execution, add the executable bit (`+x`) to the file inode:
+```bash
+sudo chmod +x /usr/local/bin/script.sh
+```
+
+### 5. Editing in the Terminal (`nano` Basics)
+When working on remote headless servers over SSH, you don't have graphical editors:
+- Open file: `sudo nano /usr/local/bin/my-script.sh`
+- Write or paste your bash code.
+- **Save**: Press `Ctrl + O`, then hit `[Enter]` to confirm filename.
+- **Exit**: Press `Ctrl + X`.
+
+---
+
 ## Part B: Admin Solo Drill (Unguided Mission)
 
 Now it is your turn to act as the systems administrator. **No step-by-step commands or answers are provided for this mission.** Use the concepts above, standard Linux utilities, man pages, or your notes.
