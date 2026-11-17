@@ -363,9 +363,36 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
        ```
      - **Tailscale / WireGuard**: A peer-to-peer encrypted mesh network. Each node runs a WireGuard daemon and receives a private `100.x.y.z` overlay IP. Engineers SSH seamlessly from home or coffee shops over end-to-end encrypted tunnels authenticated by their identity provider (Google Workspace, Okta, Microsoft Entra ID).
 
+7. **Why Firewalls Are Mandatory: Defense-in-Depth vs. Public Port 22**:
+   If Ed25519 keys are mathematically unbreakable, why can't we leave port 22 open to `0.0.0.0/0`?
+   Because authentication protects *user accounts*, but firewalls protect the *daemon and kernel*:
+
+   ```
+   ATTACK SURFACE COMPARISON:
+
+   With Open Port 22 (0.0.0.0/0):
+   [Internet Bots] ──► [TCP Handshake] ──► [sshd performs CPU Diffie-Hellman] ──► [Exposes sshd C code bugs!]
+                                                                                       │
+                                                                                       ▼ (CVE-2024-6387 RegreSSHion)
+                                                                                  [ROOT COMPROMISE BEFORE AUTH!]
+
+   With Cloud Security Group / Firewall (Restricted IP):
+   [Internet Bots] ──► [Hypervisor Drops TCP SYN Packet (SILENT DISCARD)]
+                       (sshd never wakes up, CPU burns 0 cycles, zero zero-day exposure!)
+   ```
+
+   - **The 3 Fatal Dangers of Public Port 22**:
+     1. **Zero-Day Remote Code Execution (RCE) in `sshd`**:
+        In July 2024, **CVE-2024-6387 ("RegreSSHion")** revealed a signal handler race condition in OpenSSH `sshd`. Attackers gained unauthenticated **root execution** on Linux servers *before* logging in! If port 22 was open to the internet, no key or password could protect the server.
+     2. **Resource Exhaustion & Denial of Service (DoS)**:
+        Every incoming TCP connection forces `sshd` to fork a child process and execute asymmetric Diffie-Hellman math. Thousands of internet bots brute-forcing `root` fill the `MaxStartups` connection table, locking legitimate administrators out.
+     3. **Log Poisoning & Disk Exhaustion**:
+        Failed attempts generate millions of lines in `/var/log/auth.log`, consuming gigabytes of disk space and swamping SIEM alerting pipelines.
+   - **The Golden Production Rule**: Firewalls stop the enemy at the perimeter gate. SSH keys only lock the door to the office. Never expose the office door to the public street.
+
 ---
 
-## 7. The End-to-End Execution Path: What Happens When You Type a Command?
+## 8. The End-to-End Execution Path: What Happens When You Type a Command?
 
 When you connect via SSH, type `cat /proc/uptime` and press `[Enter]`, Linux is not performing a single monolithic action. A chain of decoupled components collaborates to execute your intent:
 
