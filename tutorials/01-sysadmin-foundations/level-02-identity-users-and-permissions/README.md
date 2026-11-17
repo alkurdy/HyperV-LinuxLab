@@ -261,6 +261,12 @@ In this drill, we provision the enterprise identity groups, service accounts, an
   ```
 
 ### 3. Configure Default POSIX ACL Inheritance
+> [!NOTE]
+> **Minimal Image Prerequisite**: On minimal Ubuntu / cloud images, POSIX ACL utilities (`getfacl`, `setfacl`) are not installed by default. Install the `acl` package first:
+> ```bash
+> sudo apt update && sudo apt install -y acl
+> ```
+
 - **Action**: Ensure all future files created by any process automatically grant `rwx` permissions to the `appteam` group:
   ```bash
   sudo setfacl -d -m g:appteam:rwx /srv/app
