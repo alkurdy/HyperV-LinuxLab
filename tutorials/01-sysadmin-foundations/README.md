@@ -46,6 +46,22 @@ Each level builds directly upon the architecture, users, storage, services, and 
 
 ---
 
+## Tiered Tool Progression: The 7-Level Tool Matrix
+
+Tools are introduced progressively across the 7 levels. You master each utility in its natural architectural context before chaining them into complex scripts:
+
+| Level | Systems Focus | Primary Tools Unlocked & Mastered | Pedagogical Objective |
+| :---: | :--- | :--- | :--- |
+| **01** | **VFS & Core Streams** | `cat`, `head`, `tail` (`-f`), `less`, `grep` (`-i`, `-v`), `wc` (`-l`), `type` | Safe inspection of files without terminal flooding; filtering streams via basic pipes (`\|`); identifying builtins vs disk binaries. |
+| **02** | **Identity & Permissions** | `whoami`, `id`, `useradd`, `usermod`, `groupadd`, `chmod` (octal/symbolic), `chown`, `chgrp`, `visudo`, `getfacl`, `setfacl` | User and service account provisioning; POSIX permission modes (`rwx`), SGID directory inheritance, and fine-grained ACLs. |
+| **03** | **Storage & FHS Navigation** | `ls` (`-lah`), `cp`, `mv`, `rm`, `mkdir` (`-p`), `touch`, `df` (`-h`), `du` (`-sh`), `lsblk`, `fdisk`/`parted`, `mkfs.ext4`, `mount`, `umount`, `blkid` | File/directory CRUD; filesystem capacity auditing; partition creation, Ext4 formatting, and persistent `/etc/fstab` UUID mounts. |
+| **04** | **Troubleshooting & Diagnostics** | `journalctl` (`-b`, `-u`, `-f`, `-p`), `dmesg`, `lsof` (`+L1`), `fuser`, `vmstat`, `free` (`-h`), `uptime` | Live incident triage: identifying unlinked open file leaks, kernel OOM triggers, and hardware ring-buffer events. |
+| **05** | **Processes & Systemd** | `ps` (`aux`, `-ef`), `top`/`htop`, `pstree` (`-p`), `kill`, `pkill`, `systemctl` (`status`, `start`, `stop`, `restart`, `enable`), `systemd-cgls` | Process state inspection (`R`/`S`/`D`/`Z`); signal dispatching (`SIGTERM` vs `SIGKILL`); declarative systemd service lifecycle. |
+| **06** | **Networking & Connectivity** | `ip addr`, `ip route`, `ip link`, `ss` (`-tulpn`), `curl` (`-Iv`), `resolvectl`/`dig`, `ping`, `ufw` (`status`, `allow`, `deny`) | Modern `iproute2` network stack; socket inspection; DNS stub resolution; perimeter host firewall hardening. |
+| **07** | **Automation & Pipelines** | `cut`, `awk`, `sed`, `sort`, `uniq` (`-c`), `tr`, `xargs`, `tar`, `gzip`, `find` (`-exec`), `apt`/`dpkg`, `crontab` | Complex stream transformation, columnar text parsing, package management, archive generation, and robust Bash automation (`set -euo pipefail`). |
+
+---
+
 ## Learning Structure in Each Level
 
 Every module in Tier 1 follows a two-part learning structure:
