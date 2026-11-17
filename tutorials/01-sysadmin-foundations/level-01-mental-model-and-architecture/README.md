@@ -546,9 +546,21 @@ Execute the following commands and observe how the Linux kernel and user space i
   ```
 - **System Reaction**:
   The kernel executes a system call (`uname(2)`) directly from Ring 0 memory structures. Notice the hypervisor flag: because your VM runs under Hyper-V, the Linux kernel detects Microsoft Hyper-V synthetic virtualization Enlightenment features (`hv_vmbus`) and bypasses legacy BIOS device emulation.
+- **The Kernel Compilation Invariant (`=y` Built-In vs. `=m` Loadable Module)**:
+  - When you run `lsmod | grep hv_`, it returns **nothing**.
+  - *Why?* In Ubuntu 24.04, Canonical compiles Hyper-V drivers directly into the core `vmlinuz` binary (`CONFIG_HYPERV=y`, `CONFIG_HYPERV_STORAGE=y`, `CONFIG_HYPERV_NET=y`) rather than as loadable kernel modules (`=m`).
+  - Statically built-in drivers never appear in `lsmod`.
 - **Verification**:
+  Inspect synthetic VMBus device handles registered directly in `/sys`, check kernel boot telemetry, and inspect the compile-time kernel config:
   ```bash
-  dmesg | grep -i "hyperv" | head -n 5
+  # 1. View live VMBus synthetic device handles in sysfs:
+  ls -l /sys/bus/vmbus/devices/
+
+  # 2. View boot-time hypervisor enlightenment handshake:
+  sudo dmesg | grep -i vmbus | head -n 5
+
+  # 3. Verify driver was compiled statically into the kernel (=y):
+  grep -E "CONFIG_HYPERV(_STORAGE|_NET)?=" /boot/config-$(uname -r)
   ```
 
 ### 2. Memory & The Page Cache (Why "Free" RAM is a Lie)
