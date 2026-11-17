@@ -272,6 +272,13 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
      ```
    - Then reconnect.
 
+4. **The 3 Layers of SSH Security (Why Passphrases Exist)**:
+   - **Layer 1: Public Key (`id_ed25519.pub`)**: Placed on the server inside `~/.ssh/authorized_keys`. Acts as a digital padlock. Sharing it publicly poses zero security risk.
+   - **Layer 2: Private Key (`id_ed25519`) & Passphrase**: Stored strictly on your client workstation (`C:\Users\<user>\.ssh\id_ed25519`). Never transmitted across the wire.
+     - *The Threat Model*: If malware or a physical thief copies your `id_ed25519` file, an unencrypted key gives them instant root access to all your servers.
+     - *The Passphrase*: Encrypts the private key file on disk using **AES-256-CBC** and key derivation (**bcrypt**). When OpenSSH prompts `Enter passphrase for key...`, it decrypts the key strictly in volatile RAM to sign the authentication challenge. The private key on disk remains encrypted ciphertext.
+   - **Layer 3: Linux OS Account Password (e.g. `Green-Rabbit-95`)**: The password of the `labadmin` user account inside the Linux VM. Used for **`sudo` privilege escalation** to root and emergency Hyper-V console logins.
+
 ---
 
 ## 7. The End-to-End Execution Path: What Happens When You Type a Command?
