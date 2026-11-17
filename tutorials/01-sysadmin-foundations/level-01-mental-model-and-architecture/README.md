@@ -574,6 +574,19 @@ Execute the following commands and observe how the Linux kernel and user space i
   - `hv_utils`: Heartbeat, TimeSync, Guest Shutdown, KVP (how `Get-LabVM` queries the guest IP!), and VSS backup
   - `hyperv_keyboard` & `hid_hyperv`: Synthetic keyboard & mouse
   - `hyperv_drm`: Synthetic display adapter
+- **Bare-Metal vs. Virtualized Hardware Discovery**:
+  - In a Hyper-V VM, hardware is routed through the synthetic bus: `/sys/bus/vmbus/devices/`.
+  - On a **physical bare-metal server** (Dell PowerEdge, HPE ProLiant, or custom PC), `/sys/bus/vmbus` does not exist. Instead, the Linux kernel discovers physical silicon over standard hardware buses:
+    - **`/sys/bus/pci/devices/`**: Physical PCIe slots (GPUs, NVMe drives, 10G/25G/100G NICs).
+    - **`/sys/bus/usb/devices/`**: Physical USB host controllers and peripherals.
+  - **The Bare-Metal Discovery Toolkit**:
+    ```bash
+    lspci              # List physical PCIe controllers (Intel/Broadcom NICs, NVIDIA GPUs)
+    lsusb              # List physical USB controllers and devices
+    sudo lshw -short   # Physical hardware inventory (RAM slots/DIMMs, motherboard, CPU sockets)
+    sudo dmidecode -t system  # Motherboard BIOS, chassis serial numbers, manufacturer asset tags
+    ```
+  - On physical hardware, vendor drivers (like `ixgbe` for Intel 10G, `bnxt_en` for Broadcom, `nvidia` for GPUs, `megaraid_sas` for RAID) are often compiled as modules (`=m`), so they **will** appear in `lsmod`!
 
 ### 2. Memory & The Page Cache (Why "Free" RAM is a Lie)
 - **Action**: Check system memory:
