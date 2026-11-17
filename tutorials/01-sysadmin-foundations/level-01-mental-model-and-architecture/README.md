@@ -553,15 +553,27 @@ Execute the following commands and observe how the Linux kernel and user space i
 - **Verification**:
   Inspect synthetic VMBus device handles registered directly in `/sys`, check kernel boot telemetry, and inspect the compile-time kernel config:
   ```bash
-  # 1. View live VMBus synthetic device handles in sysfs:
+  # 1. Count and view live VMBus synthetic device handles in sysfs:
+  ls /sys/bus/vmbus/devices | wc -l
   ls -l /sys/bus/vmbus/devices/
 
-  # 2. View boot-time hypervisor enlightenment handshake:
-  sudo dmesg | grep -i vmbus | head -n 5
+  # 2. View boot-time hypervisor driver registrations:
+  sudo dmesg | grep -i vmbus | grep "registering driver"
 
-  # 3. Verify driver was compiled statically into the kernel (=y):
+  # 3. View the drivers that claimed those 14 synthetic devices:
+  ls -l /sys/bus/vmbus/drivers/
+
+  # 4. Verify driver was compiled statically into the kernel (=y):
   grep -E "CONFIG_HYPERV(_STORAGE|_NET)?=" /boot/config-$(uname -r)
   ```
+- **Why are there 14 VMBus devices?**:
+  In Generation 2 VMs, VMBus is not just for disks and network cards. Hyper-V routes **all guest integration services** over synthetic VMBus channels:
+  - `hv_storvsc`: Synthetic SCSI storage (disks & DVD ISO)
+  - `hv_netvsc`: Synthetic network adapter
+  - `hv_balloon`: Dynamic memory management
+  - `hv_utils`: Heartbeat, TimeSync, Guest Shutdown, KVP (how `Get-LabVM` queries the guest IP!), and VSS backup
+  - `hyperv_keyboard` & `hid_hyperv`: Synthetic keyboard & mouse
+  - `hyperv_drm`: Synthetic display adapter
 
 ### 2. Memory & The Page Cache (Why "Free" RAM is a Lie)
 - **Action**: Check system memory:
