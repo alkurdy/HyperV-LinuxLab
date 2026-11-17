@@ -390,9 +390,48 @@ New-LabVM -Name "sysadmin-node" -MemoryGB 2 -CPUCount 2 -Start
         Failed attempts generate millions of lines in `/var/log/auth.log`, consuming gigabytes of disk space and swamping SIEM alerting pipelines.
    - **The Golden Production Rule**: Firewalls stop the enemy at the perimeter gate. SSH keys only lock the door to the office. Never expose the office door to the public street.
 
+8. **PKI Decoded: Public Key Infrastructure vs. SSH Keys (HTTPS, LDAPS, mTLS)**:
+   Why doesn't the global web use `authorized_keys`? How does PKI scale trust across billions of devices?
+
+   #### The Core Problem: Direct Trust vs. Third-Party Trust
+   - **Plain SSH (Direct Trust / Peer-to-Peer)**: You copy your public key directly into the server's `~/.ssh/authorized_keys`. Works great for 1 admin and 10 servers. Breaks completely at 1,000 engineers and 10,000 servers (you cannot sync millions of key files).
+   - **PKI / Public Key Infrastructure (Hierarchical Trust)**: Solves the *scale* problem. When you connect to your bank (`https://bank.com`), you have never visited before, and you do not have their public key on your laptop. Yet your browser trusts them immediately. How? Through a **Certificate Authority (CA)**.
+
+   #### The Passport Analogy
+   - **SSH Key Pair**: Like a handwritten note left with a friend: *"If someone shows up with this secret signature, let them in."*
+   - **PKI Certificate**: Like a **Government-Issued Passport**:
+     - The airport border guard (your browser/client) has never met you.
+     - The border guard does not have your personal photo stored locally.
+     - BUT the border guard has a master list of **Trusted Governments (Root CAs)**.
+     - Your passport contains your name, your public key, an expiration date, and a **cryptographic digital signature from the Government**.
+     - The guard verifies the Government's signature using the Government's public key (pre-installed in the OS). If the signature is valid, you are admitted!
+
+   #### The Rosetta Stone: SSH vs. HTTPS vs. LDAPS vs. mTLS
+   | Protocol | Standard Port | Certificate / Key Format | Who Authenticates Whom? | Trust Mechanism | Primary Enterprise Use Case |
+   | :--- | :--- | :--- | :--- | :--- | :--- |
+   | **Standard SSH** | TCP 22 | OpenSSH Key (`id_ed25519`) | Server authenticates Client | **Direct Trust**: Public key pre-shared in `~/.ssh/authorized_keys`. | Remote server shell administration. |
+   | **HTTPS (TLS)** | TCP 443 | X.509 Certificate (`.crt`, `.pem`) | Client authenticates Server | **Hierarchical PKI**: Public CA (Let's Encrypt, DigiCert) signs server cert. | Web browsing, REST APIs, microservices. |
+   | **LDAPS (LDAP over TLS)** | TCP 636 | X.509 Certificate (`.crt`, `.pem`) | Client authenticates Domain Controller | **Enterprise Internal PKI**: Active Directory CS (AD CS) issues DC cert. | Secure Active Directory authentication & directory queries. |
+   | **mTLS (Mutual TLS)** | Any TCP | X.509 Certificates on **both** sides | **Both** authenticate each other | **Hierarchical PKI**: Internal CA issues certs to both client and server. | Kubernetes Pod-to-Pod zero-trust mesh (Istio, Linkerd). |
+
+   #### The 5-Step Framework to Understand ANY PKI System
+   Whenever you encounter a certificate or PKI problem in production, evaluate these 5 elements:
+   1. **The Root CA (The Sovereign)**: The ultimate trust anchor. A self-signed certificate and private key stored in an offline physical safe or Hardware Security Module (HSM).
+   2. **The Intermediate CA**: Signed by the Root CA. Used for day-to-day certificate issuance so the Root key is never exposed online.
+   3. **The Leaf Certificate (End-Entity)**: The cert on the server or service. Bundles:
+      - **Subject / SAN**: The DNS names it represents (e.g. `CN=login.company.com`).
+      - **Public Key**: The server's public encryption key.
+      - **Validity Window**: Exact start and expiration timestamps (`Not Before` / `Not After`).
+      - **Issuer Signature**: Cryptographic proof signed by the Intermediate CA.
+   4. **The Local Trust Store**: Every OS maintains a bundle of trusted Root CA certificates:
+      - Windows: `certmgr.msc` -> *Trusted Root Certification Authorities*.
+      - Linux: `/etc/ssl/certs/ca-certificates.crt` (managed via `update-ca-certificates`).
+   5. **The Chain of Trust Verification**: The client traces signatures upward:
+      `Leaf Cert ──► signed by Intermediate CA ──► signed by Root CA in Trust Store`. If any link in the chain is broken, missing, or expired, the OS rejects the connection with a Certificate Error.
+
 ---
 
-## 8. The End-to-End Execution Path: What Happens When You Type a Command?
+## 9. The End-to-End Execution Path: What Happens When You Type a Command?
 
 When you connect via SSH, type `cat /proc/uptime` and press `[Enter]`, Linux is not performing a single monolithic action. A chain of decoupled components collaborates to execute your intent:
 
