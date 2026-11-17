@@ -731,6 +731,15 @@ Sysadmins need global aliases (`ll`, `ports`) and history timestamps (`HISTTIMEF
   alias ports='ss -tulpn'
   EOF
   ```
+  > [!TIP]
+  > **Terminal Multi-Line Paste Pitfall**:
+  > When pasting multi-line blocks into an SSH terminal, network latency or line-wrap can occasionally drop trailing quotes or duplicate lines, producing `unexpected EOF while looking for matching '"'`. If this occurs, overwrite the file cleanly using discrete single-line commands:
+  > ```bash
+  > echo 'export HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "' | sudo tee /etc/profile.d/00-sysadmin.sh
+  > echo 'export EDITOR="nano"' | sudo tee -a /etc/profile.d/00-sysadmin.sh
+  > echo "alias ll='ls -lah --color=auto'" | sudo tee -a /etc/profile.d/00-sysadmin.sh
+  > echo "alias ports='ss -tulpn'" | sudo tee -a /etc/profile.d/00-sysadmin.sh
+  > ```
 - **Verification & Activation**:
   - Direct execution (`bash /etc/profile.d/00-sysadmin.sh`) would spawn a child process that sets aliases and exits, leaving your current shell unchanged.
   - To load aliases into your *current active shell*, use the builtin `source` (or `.`):
