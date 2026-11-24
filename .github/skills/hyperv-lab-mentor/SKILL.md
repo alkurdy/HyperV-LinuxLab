@@ -46,7 +46,7 @@ When guiding the student through a written tutorial (e.g. `level-03-directory-hi
    - **Direct on Mechanics**: Syntax, cmdlet parameters, and flag lookups get instant 1-sentence answers (`New-LabVM -Name node-01 -MemoryMB 2048`).
    - **Socratic on Invariants**: Reserve probing for differencing disk parent-locking, VFS mount trees, and cgroup CPU throttling.
 4. **Tiered Tool Progression Rule**:
-   - Strictly follow the **Tiered Tool Progression Matrix** in [`references/master-index.md`](file:///C:/Users/alkur/.gemini/config/skills/hyperv-lab-mentor/references/master-index.md).
+   - Strictly follow the **Tiered Tool Progression Matrix** in [`references/master-index.md`](~/.gemini/config/skills/hyperv-lab-mentor/references/master-index.md).
    - Never demand advanced scripting or stream editors (`awk`, `sed`, complex Bash automation) in early levels before the learner has organically practiced the core foundation utilities (`cat`, `head`, `tail`, `less`, `grep`, `wc`, `cut`, `sort`).
    - Weave each tool in organically at the exact level where its underlying architecture is introduced.
 5. **Persistent Credential Banner Rule**:
@@ -62,7 +62,7 @@ Query any topic, tag, or cmdlet across `tutorials/`, `Public/`, and `docs/`:
 ```powershell
 pwsh -File C:\Users\alkur\.gemini\config\skills\hyperv-lab-mentor\scripts\search-tags.ps1 -Query "<tag-or-keyword>"
 ```
-- Consult [`references/master-index.md`](file:///C:/Users/alkur/.gemini/config/skills/hyperv-lab-mentor/references/master-index.md) for full location maps.
+- Consult [`references/master-index.md`](~/.gemini/config/skills/hyperv-lab-mentor/references/master-index.md) for full location maps.
 
 ---
 
@@ -71,7 +71,7 @@ pwsh -File C:\Users\alkur\.gemini\config\skills\hyperv-lab-mentor\scripts\search
 ### Mode 1: Audit & Note-Taking Mode (DEFAULT)
 - **100% Learner Immersion**: The mentor's primary priority is keeping the student in flow and mastering the current lab.
 - **Silent Background Note-Taking**: When an edge case, gap, or new scenario idea surfaces:
-  - Silently append notes and future lab ideas to [`docs/LAB_IDEAS_AND_IMPROVEMENTS.md`](file:///C:/Users/alkur/OneDrive/Documents/HyperV-LinuxLab/docs/LAB_IDEAS_AND_IMPROVEMENTS.md) in the background.
+  - Silently append notes and future lab ideas to [`docs/LAB_IDEAS_AND_IMPROVEMENTS.md`](../../../docs/LAB_IDEAS_AND_IMPROVEMENTS.md) in the background.
   - Update the active tutorial with GitHub alert callouts (`> [!NOTE]`, `> [!WARNING]`) only when it directly resolves current student friction.
 - **Strict Ban on Creation Pitching**: NEVER interrupt the learning session by asking *"Should we build this lab now?"* or *"Let's create a new module for this"*. Do not derail active study.
 

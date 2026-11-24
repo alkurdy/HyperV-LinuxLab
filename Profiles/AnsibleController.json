@@ -1,0 +1,26 @@
+{
+  "Name": "AnsibleController",
+  "Description": "Ansible control node with automation tooling, linter, sshpass, and lab-ready ansible.cfg",
+  "Packages": [
+    "curl",
+    "git",
+    "jq",
+    "tar",
+    "acl",
+    "tmux",
+    "htop",
+    "tree",
+    "dnsutils",
+    "ansible-core",
+    "python3-pip",
+    "python3-venv",
+    "sshpass",
+    "yamllint"
+  ],
+  "RunCommands": [
+    "mkdir -p /home/labadmin/.ssh /home/labadmin/ansible-lab",
+    "if [ ! -f /home/labadmin/.ssh/id_ed25519 ]; then ssh-keygen -t ed25519 -N '' -f /home/labadmin/.ssh/id_ed25519; fi",
+    "cat << 'EOF' > /home/labadmin/ansible-lab/ansible.cfg\n[defaults]\ninventory = inventory.ini\nhost_key_checking = False\ninterpreter_python = auto_silent\nretry_files_enabled = False\nstdout_callback = yaml\n\n[privilege_escalation]\nbecome = True\nbecome_method = sudo\nbecome_user = root\nbecome_ask_pass = False\nEOF",
+    "chown -R labadmin:labadmin /home/labadmin/.ssh /home/labadmin/ansible-lab"
+  ]
+}

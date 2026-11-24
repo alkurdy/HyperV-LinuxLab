@@ -1,0 +1,39 @@
+{
+  "ClusterName": "ansible-fleet",
+  "Description": "Heterogeneous Ansible lab cluster: 1 control node managing Ubuntu, Debian, and AlmaLinux nodes",
+  "SwitchName": "Default Switch",
+  "Nodes": [
+    {
+      "Name": "ansible-ctrl",
+      "Distro": "Ubuntu2404",
+      "Role": "ControlNode",
+      "Profile": "AnsibleController",
+      "CPU": 2,
+      "MemoryGB": 2
+    },
+    {
+      "Name": "web-01",
+      "Distro": "Ubuntu2404",
+      "Role": "ManagedNode",
+      "Profile": "Minimal",
+      "CPU": 1,
+      "MemoryGB": 1
+    },
+    {
+      "Name": "db-01",
+      "Distro": "Debian12",
+      "Role": "ManagedNode",
+      "Profile": "Minimal",
+      "CPU": 1,
+      "MemoryGB": 1
+    },
+    {
+      "Name": "app-01",
+      "Distro": "AlmaLinux9",
+      "Role": "ManagedNode",
+      "CPU": 1,
+      "MemoryGB": 1,
+      "Packages": ["python3", "curl", "tar", "acl"]
+    }
+  ]
+}
