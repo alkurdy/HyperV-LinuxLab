@@ -1118,7 +1118,7 @@ In [Level 02](../level-02-identity-users-and-permissions/README.md), we will bui
 ---
 
 ### Navigation
-| [Tier 1: Sysadmin Foundations](../README.md) | [Tutorials Hub](../../README.md) | [Next: Level 02: Identity, Users & Permissions →](../level-02-identity-users-and-permissions/README.md) |
+| [← Previous: Level 00: First Steps](../level-00-first-steps/README.md) | [Tier 1: Sysadmin Foundations](../README.md) | [Next: Level 02: Identity, Users & Permissions →](../level-02-identity-users-and-permissions/README.md) |
 | :--- | :---: | ---: |
 
 *(Related topic: See [Hyper-V Tutorial 01: Host Prerequisites & Silicon](../../hyperv-internals/01-prerequisites-and-hardware/README.md)).*

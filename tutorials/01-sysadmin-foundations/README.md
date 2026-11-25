@@ -52,6 +52,7 @@ Tools are introduced progressively across the 7 levels. You master each utility 
 
 | Level | Systems Focus | Primary Tools Unlocked & Mastered | Pedagogical Objective |
 | :---: | :--- | :--- | :--- |
+| **00** | **First Steps (Orientation)** | `pwd`, `ls`, `cd`, `mkdir`, `touch`, `cp`, `mv`, `rm`, `nano`, `sudo`, `apt`, `man` | Windows-to-Linux shell transition: prompt decoding, `/` tree navigation, safe file CRUD, text editing, privilege elevation, and package installation. |
 | **01** | **VFS & Core Streams** | `cat`, `head`, `tail` (`-f`), `less`, `grep` (`-i`, `-v`), `wc` (`-l`), `type` | Safe inspection of files without terminal flooding; filtering streams via basic pipes (`\|`); identifying builtins vs disk binaries. |
 | **02** | **Identity & Permissions** | `whoami`, `id`, `useradd`, `usermod`, `groupadd`, `chmod` (octal/symbolic), `chown`, `chgrp`, `visudo`, `getfacl`, `setfacl` | User and service account provisioning; POSIX permission modes (`rwx`), SGID directory inheritance, and fine-grained ACLs. |
 | **03** | **Storage & FHS Navigation** | `ls` (`-lah`), `cp`, `mv`, `rm`, `mkdir` (`-p`), `touch`, `df` (`-h`), `du` (`-sh`), `lsblk`, `fdisk`/`parted`, `mkfs.ext4`, `mount`, `umount`, `blkid` | File/directory CRUD; filesystem capacity auditing; partition creation, Ext4 formatting, and persistent `/etc/fstab` UUID mounts. |
@@ -98,6 +99,7 @@ Remove-LabCheckpoint -Name "sysadmin-node" -All -Force
 
 | Level | Module | Core Systems Concept | Layered System Milestone |
 | :---: | :--- | :--- | :--- |
+| **00** | [**Level 00: Linux First Steps (Orientation)**](level-00-first-steps/README.md) | Shell prompt, `/` tree vs `C:\`, file CRUD, `nano`, `sudo`, `apt`, `man`. | Navigate `sysadmin-node`, edit text, install `tree`, complete `~/sandbox` drill. |
 | **01** | [**Level 01: Mental Model & Architecture**](level-01-mental-model-and-architecture/README.md) | VFS single tree, Ring 0 vs Ring 3, pseudo filesystems (`/proc`, `/sys`), streams (`stdin`/`stdout`/`stderr`), pipes. | Provision `sysadmin-node`, audit bare-metal baseline, create admin profile. |
 | **02** | [**Level 02: Identity, Users, Groups & Permissions**](level-02-identity-users-and-permissions/README.md) | UID/GID (`/etc/passwd`, `/etc/shadow`), `visudo`, octal permissions, directory traversal, SGID sticky groups, POSIX ACLs. | Create `appteam`, `svc-app`, provision `/srv/app` and `/var/log/app` with SGID & ACLs. |
 | **03** | [**Level 03: Directory Hierarchy & Block Storage**](level-03-directory-hierarchy-and-storage/README.md) | FHS 3.0, block devices (`/dev/sdX`), GPT partitioning, `ext4`/`xfs`, persistent `/etc/fstab` UUID mounting, swap memory. | Partition block disk, format Ext4, mount persistently to `/srv/app`, activate swapfile. |

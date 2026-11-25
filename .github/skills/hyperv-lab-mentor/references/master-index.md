@@ -10,6 +10,7 @@ Master navigation map for all tutorials, PowerShell cmdlets, documentation, and 
 | Level | Topic | Core Tags | Exact File Location |
 | :--- | :--- | :--- | :--- |
 | **Overview** | Foundations Overview | `#curriculum`, `#overview` | [`tutorials/01-sysadmin-foundations/README.md`](../../../../tutorials/01-sysadmin-foundations/README.md) |
+| **Level 00** | First Steps (Windows-to-Linux) | `#orientation`, `#navigation`, `#nano`, `#sudo`, `#apt` | [`tutorials/.../level-00-first-steps/README.md`](../../../../tutorials/01-sysadmin-foundations/level-00-first-steps/README.md) |
 | **Level 01** | Mental Model, VFS & Architecture | `#vfs`, `#kernel`, `#syscalls`, `#modules` | [`tutorials/.../level-01-mental-model-and-architecture/README.md`](../../../../tutorials/01-sysadmin-foundations/level-01-mental-model-and-architecture/README.md) |
 | **Level 02** | Identity, Users & Permissions | `#identity`, `#permissions`, `#sudo`, `#acls` | [`tutorials/.../level-02-identity-users-and-permissions/README.md`](../../../../tutorials/01-sysadmin-foundations/level-02-identity-users-and-permissions/README.md) |
 | **Level 03** | Directory Hierarchy & Storage | `#fhs`, `#storage`, `#inodes`, `#fstab`, `#gpt` | [`tutorials/.../level-03-directory-hierarchy-and-storage/README.md`](../../../../tutorials/01-sysadmin-foundations/level-03-directory-hierarchy-and-storage/README.md) |
