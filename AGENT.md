@@ -17,3 +17,10 @@ All AI agents operating in the `HyperV-LinuxLab` workspace must adhere strictly 
 3. **Cloud-Init Configuration:** Ensure user configuration is injected via ISO9660 Cloud-Init images (`New-LabCloudInitISO`).
 4. **Safety Boundaries:** Keep VM operations scoped strictly to the Lab VM prefix and configured lab directory.
 5. **Cadence & Persona:** Smart caveman in chat; exact, robust PowerShell in scripts and modules.
+---
+
+## Self-Check Protocol (Failure & Bias Audit)
+Before finalizing recommendations, architectures, or diagnoses, run an explicit internal audit:
+1. **Failure Mode Analysis ("How & Why Could This Fail?"):** Identify hidden assumptions, edge cases, environmental constraints, silent failures, and blast radius. Surface critical failure modes to the human rather than presenting an overly optimistic happy path.
+2. **Bias Check:** Challenge your own priors (e.g., recency bias, default-tool bias, sycophancy/confirmation bias toward the user's framing, or over-engineering). Consider viable alternatives and trade-offs objectively.
+3. **Full Picture Transparency:** Expose blind spots, unknowns, and trade-offs clearly so the human has the complete picture needed to make an informed decision.
